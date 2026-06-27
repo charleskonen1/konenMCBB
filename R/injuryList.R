@@ -35,9 +35,27 @@ injuryList <- function() {
 
   url <- "https://www.covers.com/sport/basketball/ncaab/injuries"
 
-  webpage <- tryCatch(
-    rvest::read_html(url),
+  resp <- tryCatch(
+    httr2::req_perform(
+      httr2::request(url) |>
+        httr2::req_headers(
+          "User-Agent" = paste0(
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ",
+            "AppleWebKit/537.36 (KHTML, like Gecko) ",
+            "Chrome/125.0.0.0 Safari/537.36"
+          ),
+          "Accept"          = "text/html,application/xhtml+xml,*/*",
+          "Accept-Language" = "en-US,en;q=0.9"
+        ) |>
+        httr2::req_timeout(20) |>
+        httr2::req_retry(max_tries = 2, backoff = \(i) i * 3)
+    ),
     error = function(e) stop("Failed to retrieve injury page: ", conditionMessage(e))
+  )
+  httr2::resp_check_status(resp)
+  webpage <- tryCatch(
+    rvest::read_html(httr2::resp_body_string(resp)),
+    error = function(e) stop("Failed to parse injury page: ", conditionMessage(e))
   )
 
   injury_cols <- c("Player", "POS", "Status", "Description")

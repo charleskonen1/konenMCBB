@@ -76,13 +76,8 @@ torvik_team_ratings <- function(
   conf_q <- if (identical(conf, "All")) "" else paste0("&conlimit=", utils::URLencode(conf, reserved = TRUE))
   url <- paste0("https://barttorvik.com/trank.php?json=1&year=", year_str, conf_q)
 
-  req <- httr2::request(url) |>
-    httr2::req_headers(
-      Accept       = "application/json",
-      `User-Agent` = "konenMCBB R package (github.com/charleskonen1/konenMCBB)",
-      Referer      = paste0("https://barttorvik.com/?year=", year_str)
-    ) |>
-    httr2::req_timeout(timeout)
+  req <- .torvik_req(url, timeout,
+                     referer = paste0("https://barttorvik.com/?year=", year_str))
 
   resp <- tryCatch(
     httr2::req_perform(req),

@@ -17,7 +17,13 @@ current_resume <- function() {
   year_str <- as.character(year)
   csv_url <- paste0("https://barttorvik.com/", year_str, "_team_results.csv")
 
-  data <- utils::read.csv(csv_url)
+  resp <- tryCatch(
+    httr2::req_perform(.torvik_req(csv_url, timeout = 20)),
+    error = function(e) stop("Failed to reach barttorvik.com: ", conditionMessage(e))
+  )
+  httr2::resp_check_status(resp)
+  txt <- httr2::resp_body_string(resp)
+  data <- utils::read.csv(text = txt, stringsAsFactors = FALSE)
 
   return(tibble::as_tibble(data))
 }

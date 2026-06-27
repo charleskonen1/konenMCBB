@@ -31,10 +31,18 @@ timeMachine_ratings <- function(date) {
     "_team_results.json.gz"
   )
 
-  gz_path <- tempfile(fileext = ".json.gz")
+  gz_path  <- tempfile(fileext = ".json.gz")
   json_path <- tempfile(fileext = ".json")
 
-  utils::download.file(url, gz_path, mode = "wb", quiet = TRUE)
+  resp <- tryCatch(
+    httr2::req_perform(
+      .torvik_req(url, timeout = 60,
+                  referer = "https://barttorvik.com/timemachine/")
+    ),
+    error = function(e) stop("Failed to download Time Machine data: ", conditionMessage(e))
+  )
+  httr2::resp_check_status(resp)
+  writeBin(httr2::resp_body_raw(resp), gz_path)
 
   R.utils::gunzip(
     gz_path,

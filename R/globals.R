@@ -51,5 +51,16 @@ utils::globalVariables(c(
   # super_sked_with_timemachine
   "team",
   # espn_season_players active_only filter
-  "did_not_play"
+  "did_not_play",
+  # dayCast derived columns
+  "t1wp_n", "t2wp_n", "Favorite", "WinProb", "Pred_Score",
+  "t1wp", "t2wp", "t1ppp", "t2ppp", "matchup", "prediction",
+  "Matchup", "Line", "TTQ",
+  # super_sked / dayCast schedule columns
+  "team1", "team2", "t1pts", "t2pts", "muid", "gp",
+  "t1adjt", "t2adjt", "t1adjo", "t1adjd", "t2adjo", "t2adjd",
+  "Date", "venue", "confmatch",
+  # timeMachine / super_sked_with_timemachine
+  "adjoe", "adjde", "barthag", "adjt",
+  "side", "opponent", "team_pts", "opp_pts", "game_date"
 ))

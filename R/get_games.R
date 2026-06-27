@@ -89,13 +89,7 @@ get_games <- function(
   referer <- paste0("https://www.barttorvik.com/gamestat.php?", base_query)
   xhr_url <- paste0("https://www.barttorvik.com/getgamestats.php?", base_query)
 
-  req <- httr2::request(xhr_url) |>
-    httr2::req_headers(
-      Accept       = "*/*",
-      Referer      = referer,
-      `User-Agent` = "konenMCBB R package (github.com/charleskonen1/konenMCBB)"
-    ) |>
-    httr2::req_timeout(timeout)
+  req <- .torvik_req(xhr_url, timeout, referer = referer)
 
   resp <- httr2::req_perform(req)
   httr2::resp_check_status(resp)

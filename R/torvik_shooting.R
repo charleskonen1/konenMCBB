@@ -101,13 +101,8 @@ torvik_shooting <- function(
     "https://barttorvik.com/shooting.php?csv=1&year=", year_str, conf_q
   )
 
-  req <- httr2::request(url) |>
-    httr2::req_headers(
-      Accept       = "text/csv,text/plain,*/*",
-      `User-Agent` = "konenMCBB R package (github.com/charleskonen1/konenMCBB)",
-      Referer      = paste0("https://barttorvik.com/shooting.php?year=", year_str)
-    ) |>
-    httr2::req_timeout(timeout)
+  req <- .torvik_req(url, timeout,
+                     referer = paste0("https://barttorvik.com/shooting.php?year=", year_str))
 
   resp <- tryCatch(
     httr2::req_perform(req),

@@ -8,10 +8,8 @@ teamList <- function() {
 
   url <- "https://www.sports-reference.com/cbb/schools/"
 
-  webpage <- tryCatch(
-    rvest::read_html(url),
-    error = function(e) stop("Failed to retrieve team list page.")
-  )
+  webpage <- .sr_fetch_html(url)
+  if (is.null(webpage)) stop("Failed to retrieve team list page from Sports Reference.")
 
   node <- rvest::html_element(webpage, "tbody")
 

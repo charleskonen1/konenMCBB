@@ -77,11 +77,13 @@ player_stats <- function(
     "&csv=1"
   )
 
-  data <- utils::read.csv(
-    csv_url,
-    stringsAsFactors = FALSE,
-    check.names      = FALSE
+  resp <- tryCatch(
+    httr2::req_perform(.torvik_req(csv_url, timeout = 30)),
+    error = function(e) stop("Failed to reach barttorvik.com: ", conditionMessage(e))
   )
+  httr2::resp_check_status(resp)
+  txt <- httr2::resp_body_string(resp)
+  data <- utils::read.csv(text = txt, stringsAsFactors = FALSE, check.names = FALSE)
 
   playerCols <- c(
     "player_name", "team", "conf", "GP", "Min_pct",

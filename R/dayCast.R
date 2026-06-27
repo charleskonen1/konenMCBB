@@ -37,12 +37,29 @@ dayCast <- function(year = as.integer(format(Sys.Date(), "%Y"))) {
   }
 
   slate |>
+    dplyr::mutate(
+      t1wp_n  = suppressWarnings(as.numeric(.data$t1wp)),
+      t2wp_n  = suppressWarnings(as.numeric(.data$t2wp)),
+      Favorite = dplyr::if_else(
+        is.na(.data$t1wp_n) | .data$t1wp_n >= .data$t2wp_n,
+        .data$team1, .data$team2
+      ),
+      WinProb = dplyr::if_else(
+        is.na(.data$t1wp_n) | .data$t1wp_n >= .data$t2wp_n,
+        round(.data$t1wp_n, 1), round(.data$t2wp_n, 1)
+      ),
+      Pred_Score = paste0(
+        suppressWarnings(round(as.numeric(.data$t1ppp), 0)), "-",
+        suppressWarnings(round(as.numeric(.data$t2ppp), 0))
+      )
+    ) |>
     dplyr::transmute(
-      Matchup         = .data$matchup,
-      Line            = paste0(.data$favored_team, " ", .data$line),
-      Predicted_score = .data$predicted_score,
-      WinProb         = .data$pctChanceWin,
-      TTQ             = round(as.numeric(.data$ttq), 1)
+      Matchup    = .data$matchup,
+      Favorite   = .data$Favorite,
+      Pred_Score = .data$Pred_Score,
+      WinProb    = .data$WinProb,
+      Line       = .data$prediction,
+      TTQ        = round(suppressWarnings(as.numeric(.data$ttq)), 1)
     ) |>
     dplyr::arrange(dplyr::desc(.data$TTQ))
 }

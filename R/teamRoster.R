@@ -29,10 +29,8 @@ teamRoster <- function(team, season) {
     ".html"
   )
 
-  webpage <- tryCatch(
-    rvest::read_html(url),
-    error = function(e) stop("Failed to retrieve roster page.")
-  )
+  webpage <- .sr_fetch_html(url)
+  if (is.null(webpage)) stop("Failed to retrieve roster page from Sports Reference.")
 
   node <- rvest::html_element(webpage, "tbody")
 

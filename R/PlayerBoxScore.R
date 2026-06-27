@@ -44,13 +44,10 @@ PlayerBoxScore <- function(name, season, team) {
       "/gamelog/", year_str, "/"
     )
 
-    webpage <- tryCatch(
-      rvest::read_html(url),
-      error = function(e) NULL
-    )
+    webpage <- .sr_fetch_html(url)   # includes 1.5 s polite delay
 
     if (is.null(webpage)) {
-      Sys.sleep(1)
+      Sys.sleep(2)
       next
     }
 
