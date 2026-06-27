@@ -39,7 +39,7 @@ both raw and adjusted four-factor-style efficiency numbers."></head><body>
 
       <h1>Get Bart Torvik game-level efficiency stats</h1>
       <small class="dont-index">Source: <a href="https://github.com/charleskonen1/konenMCBB/blob/HEAD/R/get_games.R" class="external-link"><code>R/get_games.R</code></a></small>
-      <div class="d-none name"><code>get_games.Rd</code></div>
+      <div class="d-none name"><code>get_games 2.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
@@ -50,7 +50,7 @@ both raw and adjusted four-factor-style efficiency numbers.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">get_games</span><span class="op">(</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/get_games%202.html" class="external-link">get_games</a></span><span class="op">(</span></span>
 <span>  team <span class="op">=</span> <span class="st">"All"</span>,</span>
 <span>  season <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"%Y"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  quad <span class="op">=</span> <span class="st">"All"</span></span>
@@ -133,10 +133,10 @@ ranking.</p></dd>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span>  <span class="co"># Duke's full 2025-26 game log</span></span></span>
-<span class="r-in"><span>  <span class="va">duke</span> <span class="op">&lt;-</span> <span class="fu">get_games</span><span class="op">(</span>team <span class="op">=</span> <span class="st">"Duke"</span>, season <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">duke</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/get_games%202.html" class="external-link">get_games</a></span><span class="op">(</span>team <span class="op">=</span> <span class="st">"Duke"</span>, season <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># All Quadrant 1 games in 2025-26</span></span></span>
-<span class="r-in"><span>  <span class="va">q1</span> <span class="op">&lt;-</span> <span class="fu">get_games</span><span class="op">(</span>quad <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">q1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/get_games%202.html" class="external-link">get_games</a></span><span class="op">(</span>quad <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Filter to wins</span></span></span>
 <span class="r-in"><span>  <span class="va">duke</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Result</span> <span class="op">==</span> <span class="st">"W"</span><span class="op">)</span></span></span>

@@ -39,7 +39,7 @@ how efficiently they convert from each zone, on both offense and defense."></hea
 
       <h1>Get Bart Torvik team shooting splits</h1>
       <small class="dont-index">Source: <a href="https://github.com/charleskonen1/konenMCBB/blob/HEAD/R/torvik_shooting.R" class="external-link"><code>R/torvik_shooting.R</code></a></small>
-      <div class="d-none name"><code>torvik_shooting.Rd</code></div>
+      <div class="d-none name"><code>torvik_shooting 2.Rd</code></div>
     </div>
 
     <div class="ref-description section level2">
@@ -50,7 +50,7 @@ how efficiently they convert from each zone, on both offense and defense.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">torvik_shooting</span><span class="op">(</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_shooting%202.html" class="external-link">torvik_shooting</a></span><span class="op">(</span></span>
 <span>  year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"%Y"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  conf <span class="op">=</span> <span class="st">"All"</span>,</span>
 <span>  timeout <span class="op">=</span> <span class="fl">20</span></span>
@@ -178,7 +178,7 @@ with low `d_three_rate` is successfully pushing opponents away from the arc.</p>
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span>  <span class="co"># All teams, current season</span></span></span>
-<span class="r-in"><span>  <span class="va">shooting</span> <span class="op">&lt;-</span> <span class="fu">torvik_shooting</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">shooting</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_shooting%202.html" class="external-link">torvik_shooting</a></span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Best rim-finishing teams</span></span></span>
 <span class="r-in"><span>  <span class="va">shooting</span> <span class="op">|&gt;</span></span></span>
@@ -196,7 +196,7 @@ with low `d_three_rate` is successfully pushing opponents away from the arc.</p>
 <span class="r-in"><span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">team</span>, <span class="va">conf</span>, <span class="va">o_rim_rate</span>, <span class="va">o_mid_rate</span>, <span class="va">o_three_rate</span>, <span class="va">o_rim_pct</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># SEC teams</span></span></span>
-<span class="r-in"><span>  <span class="fu">torvik_shooting</span><span class="op">(</span>conf <span class="op">=</span> <span class="st">"SEC"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_shooting%202.html" class="external-link">torvik_shooting</a></span><span class="op">(</span>conf <span class="op">=</span> <span class="st">"SEC"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
