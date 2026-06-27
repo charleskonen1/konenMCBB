@@ -24,6 +24,14 @@ if (!requireNamespace("konenMCBB", quietly = TRUE)) {
   library(konenMCBB)
 }
 
+# Optional dependency — only used for scatter labels
+have_ggrepel <- requireNamespace("ggrepel", quietly = TRUE)
+
+# -- Icon helper (must be defined before UI) -----------------------------------
+icon_text <- function(icon_name, text) {
+  tagList(tags$i(class = paste0("fas fa-", icon_name)), " ", text)
+}
+
 # ── Theme ─────────────────────────────────────────────────────────────────────
 app_theme <- bs_theme(
   version    = 5,
@@ -46,12 +54,28 @@ conf_choices <- c(
   "SC", "ASun", "Sum", "NEC", "Pat", "MEAC", "SWAC", "Ind"
 )
 
-current_year <- as.integer(format(Sys.Date(), "%Y"))
+# Torvik uses season-end year convention (year=2026 = 2025-26 season).
+# Nov-Dec: season just started, so current_year + 1 is the active season.
+# Jan-Apr: active season, current_year.
+# May-Oct: off-season — most recent completed season was current_year.
+.month <- as.integer(format(Sys.Date(), "%m"))
+current_year <- if (.month >= 11L) {
+  as.integer(format(Sys.Date(), "%Y")) + 1L
+} else {
+  as.integer(format(Sys.Date(), "%Y"))
+}
+# In-season months: Nov–Apr. If we're in the off-season (May–Oct), display a banner.
+is_offseason <- .month >= 5L && .month <= 10L
+
 year_choices <- setNames(
   seq(current_year, 2008, by = -1),
   paste0(seq(current_year, 2008, by = -1) - 1, "-",
          substr(as.character(seq(current_year, 2008, by = -1)), 3, 4))
 )
+
+# Default season selection: use previous year during off-season (May–Oct) so
+# the first Load doesn't immediately 404 on endpoints that don't exist yet.
+default_year <- if (is_offseason) current_year - 1L else current_year
 
 # ── UI ────────────────────────────────────────────────────────────────────────
 ui <- page_navbar(
@@ -69,7 +93,21 @@ ui <- page_navbar(
       .metric-lbl  { font-size: 0.85rem; color: #6c757d; }
       .nav-item .active { font-weight: 600; }
       .dataTables_wrapper .dataTables_filter input { border-radius: 6px; }
-    ")))
+    "))),
+    # Off-season notice (May–October) — some Torvik endpoints 404 during the off-season.
+    # Historical data (select a year <= current_year - 1) always works.
+    if (is_offseason) {
+      div(
+        class = "alert alert-warning fade show mb-0",
+        role  = "alert",
+        style = paste0("border-radius: 0; margin: 0; padding: 8px 16px; ",
+                       "font-size: 0.9rem; text-align: center;"),
+        tags$strong("⚠ Off-season (May–Oct):"),
+        " Live slate & current-season files may not be available on barttorvik.com. ",
+        "Historical data is fully accessible — select any season year from the dropdown. ",
+        "Season returns in November."
+      )
+    }
   ),
 
   # ── Tab 1: T-Rank Ratings ──────────────────────────────────────────────────
@@ -79,7 +117,7 @@ ui <- page_navbar(
     layout_sidebar(
       sidebar = sidebar(
         width = 220,
-        selectInput("rank_year", "Season", choices = year_choices, selected = current_year),
+        selectInput("rank_year", "Season", choices = year_choices, selected = default_year),
         selectInput("rank_conf", "Conference", choices = conf_choices),
         sliderInput("rank_n", "Show top N teams", min = 10, max = 363, value = 25, step = 5),
         hr(),
@@ -95,9 +133,9 @@ ui <- page_navbar(
         uiOutput("rank_card_4")
       ),
       br(),
-      withSpinner(DTOutput("rankings_table"), type = 6, color = "#1a3a5c"),
+      DTOutput("rankings_table"),
       br(),
-      withSpinner(plotOutput("barthag_plot", height = "400px"), type = 6, color = "#1a3a5c")
+      plotOutput("barthag_plot", height = "400px")
     )
   ),
 
@@ -108,21 +146,21 @@ ui <- page_navbar(
     layout_sidebar(
       sidebar = sidebar(
         width = 220,
-        selectInput("conf_year", "Season", choices = year_choices, selected = current_year),
+        selectInput("conf_year", "Season", choices = year_choices, selected = default_year),
         numericInput("conf_min_teams", "Min teams", value = 8, min = 4, max = 20),
         hr(),
         actionButton("load_conf", "Load / Refresh", class = "btn-primary w-100",
                      icon = icon("rotate"))
       ),
-      withSpinner(plotOutput("conf_barthag_plot", height = "450px"), type = 6, color = "#1a3a5c"),
+      plotOutput("conf_barthag_plot", height = "450px"),
       br(),
       layout_columns(
         col_widths = c(6, 6),
-        withSpinner(plotOutput("conf_oe_de_plot", height = "380px"), type = 6, color = "#1a3a5c"),
-        withSpinner(plotOutput("conf_tempo_plot", height = "380px"), type = 6, color = "#1a3a5c")
+        plotOutput("conf_oe_de_plot", height = "380px"),
+        plotOutput("conf_tempo_plot", height = "380px")
       ),
       br(),
-      withSpinner(DTOutput("conf_table"), type = 6, color = "#1a3a5c")
+      DTOutput("conf_table")
     )
   ),
 
@@ -133,7 +171,7 @@ ui <- page_navbar(
     layout_sidebar(
       sidebar = sidebar(
         width = 240,
-        selectInput("ff_year", "Season", choices = year_choices, selected = current_year),
+        selectInput("ff_year", "Season", choices = year_choices, selected = default_year),
         selectInput("ff_conf", "Conference", choices = conf_choices),
         hr(),
         selectInput("ff_x", "X axis",
@@ -159,9 +197,9 @@ ui <- page_navbar(
         actionButton("load_ff", "Load / Refresh", class = "btn-primary w-100",
                      icon = icon("rotate"))
       ),
-      withSpinner(plotOutput("ff_scatter", height = "550px"), type = 6, color = "#1a3a5c"),
+      plotOutput("ff_scatter", height = "550px"),
       br(),
-      withSpinner(DTOutput("ff_table"), type = 6, color = "#1a3a5c")
+      DTOutput("ff_table")
     )
   ),
 
@@ -172,7 +210,7 @@ ui <- page_navbar(
     layout_sidebar(
       sidebar = sidebar(
         width = 240,
-        selectInput("sh_year", "Season", choices = year_choices, selected = current_year),
+        selectInput("sh_year", "Season", choices = year_choices, selected = default_year),
         selectInput("sh_conf", "Conference", choices = conf_choices),
         selectInput("sh_side", "Side",
                     choices = c("Offense" = "o", "Defense" = "d"),
@@ -183,11 +221,11 @@ ui <- page_navbar(
       ),
       layout_columns(
         col_widths = c(6, 6),
-        withSpinner(plotOutput("sh_rim_plot",   height = "380px"), type = 6, color = "#1a3a5c"),
-        withSpinner(plotOutput("sh_three_plot", height = "380px"), type = 6, color = "#1a3a5c")
+        plotOutput("sh_rim_plot",   height = "380px"),
+        plotOutput("sh_three_plot", height = "380px")
       ),
       br(),
-      withSpinner(DTOutput("sh_table"), type = 6, color = "#1a3a5c")
+      DTOutput("sh_table")
     )
   ),
 
@@ -199,15 +237,15 @@ ui <- page_navbar(
       sidebar = sidebar(
         width = 220,
         p(strong("Date:"), format(Sys.Date(), "%B %d, %Y")),
-        selectInput("today_year", "Season", choices = year_choices, selected = current_year),
+        selectInput("today_year", "Season", choices = year_choices, selected = default_year),
         hr(),
         actionButton("load_today", "Refresh Slate", class = "btn-primary w-100",
                      icon = icon("rotate"))
       ),
       h4("Games on today's board:"),
-      withSpinner(DTOutput("today_table"), type = 6, color = "#1a3a5c"),
+      DTOutput("today_table"),
       br(),
-      withSpinner(plotOutput("today_plot", height = "350px"), type = 6, color = "#1a3a5c")
+      plotOutput("today_plot", height = "350px")
     )
   ),
 
@@ -218,7 +256,7 @@ ui <- page_navbar(
     layout_sidebar(
       sidebar = sidebar(
         width = 240,
-        selectInput("pl_year", "Season", choices = year_choices, selected = current_year),
+        selectInput("pl_year", "Season", choices = year_choices, selected = default_year),
         sliderInput("pl_gp",  "Min games played", min = 1, max = 35, value = 10),
         sliderInput("pl_usg", "Min usage %",      min = 0, max = 35, value = 15),
         hr(),
@@ -227,11 +265,11 @@ ui <- page_navbar(
       ),
       layout_columns(
         col_widths = c(6, 6),
-        withSpinner(plotOutput("pl_bpm_plot",  height = "380px"), type = 6, color = "#1a3a5c"),
-        withSpinner(plotOutput("pl_ortg_plot", height = "380px"), type = 6, color = "#1a3a5c")
+        plotOutput("pl_bpm_plot",  height = "380px"),
+        plotOutput("pl_ortg_plot", height = "380px")
       ),
       br(),
-      withSpinner(DTOutput("pl_table"), type = 6, color = "#1a3a5c")
+      DTOutput("pl_table")
     )
   )
 )
@@ -260,7 +298,7 @@ server <- function(input, output, session) {
         error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
       )
     })
-  }, ignoreNULL = FALSE, ignoreInit = FALSE)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   rank_data <- reactive({
     req(rv$rankings)
@@ -335,7 +373,7 @@ server <- function(input, output, session) {
         error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
       )
     })
-  }, ignoreNULL = FALSE, ignoreInit = FALSE)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   output$conf_barthag_plot <- renderPlot({
     d <- rv$conf; req(d)
@@ -406,7 +444,7 @@ server <- function(input, output, session) {
         error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
       )
     })
-  }, ignoreNULL = FALSE, ignoreInit = FALSE)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   output$ff_scatter <- renderPlot({
     d  <- rv$ff; req(d)
@@ -437,8 +475,13 @@ server <- function(input, output, session) {
            x = xlab, y = ylab) +
       theme_minimal(base_size = 12)
     if (input$ff_label) {
-      p <- p + ggrepel::geom_text_repel(aes_string(label = "team"),
-                                         size = 2.5, max.overlaps = 20)
+      if (have_ggrepel) {
+        p <- p + ggrepel::geom_text_repel(aes_string(label = "team"),
+                                           size = 2.5, max.overlaps = 20)
+      } else {
+        p <- p + geom_text(aes_string(label = "team"), size = 2.2,
+                           vjust = -0.5, check_overlap = TRUE)
+      }
     }
     p
   })
@@ -477,7 +520,7 @@ server <- function(input, output, session) {
         error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
       )
     })
-  }, ignoreNULL = FALSE, ignoreInit = FALSE)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   sh_side_data <- reactive({
     d  <- rv$shooting; req(d)
@@ -556,7 +599,7 @@ server <- function(input, output, session) {
         error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
       )
     })
-  }, ignoreNULL = FALSE, ignoreInit = FALSE)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   output$today_table <- renderDT({
     d <- rv$today
@@ -599,7 +642,7 @@ server <- function(input, output, session) {
         error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
       )
     })
-  }, ignoreNULL = FALSE, ignoreInit = FALSE)
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
 
   pl_filtered <- reactive({
     d <- rv$players; req(d)
@@ -666,11 +709,6 @@ server <- function(input, output, session) {
       class    = "stripe hover compact"
     )
   })
-}
-
-# -- Icon helper ---------------------------------------------------------------
-icon_text <- function(icon_name, text) {
-  tagList(tags$i(class = paste0("fas fa-", icon_name)), " ", text)
 }
 
 shinyApp(ui, server)

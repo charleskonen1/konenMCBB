@@ -68,17 +68,14 @@ teamBoxScore <- function(team = "All",
   referer <- paste0("https://www.barttorvik.com/gamestat.php?", base_params)
   xhr_url <- paste0("https://www.barttorvik.com/getgamestats.php?", base_params)
 
-  req <- .torvik_req(xhr_url, timeout, referer = referer)
+  req  <- .torvik_req(xhr_url, timeout, referer = referer)
+  resp <- .torvik_perform(req, as.character(season))
+  txt  <- httr2::resp_body_string(resp)
+  .torvik_check_html(txt, format = "JSON")
 
-  resp <- httr2::req_perform(req)
-  httr2::resp_check_status(resp)
-
-  txt <- httr2::resp_body_string(resp)
-
-  x <- jsonlite::fromJSON(
-    txt,
-    simplifyDataFrame = TRUE,
-    simplifyMatrix    = TRUE
+  x <- tryCatch(
+    jsonlite::fromJSON(txt, simplifyDataFrame = TRUE, simplifyMatrix = TRUE),
+    error = function(e) stop("Failed to parse team box score JSON: ", conditionMessage(e))
   )
 
   if (is.matrix(x)) x <- as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)

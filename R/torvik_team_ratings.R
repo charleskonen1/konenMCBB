@@ -76,16 +76,12 @@ torvik_team_ratings <- function(
   conf_q <- if (identical(conf, "All")) "" else paste0("&conlimit=", utils::URLencode(conf, reserved = TRUE))
   url <- paste0("https://barttorvik.com/trank.php?json=1&year=", year_str, conf_q)
 
-  req <- .torvik_req(url, timeout,
-                     referer = paste0("https://barttorvik.com/?year=", year_str))
+  req  <- .torvik_req(url, timeout,
+                      referer = paste0("https://barttorvik.com/?year=", year_str))
+  resp <- .torvik_perform(req, year_str)
+  txt  <- httr2::resp_body_string(resp)
+  .torvik_check_html(txt, format = "JSON")
 
-  resp <- tryCatch(
-    httr2::req_perform(req),
-    error = function(e) stop("Failed to reach barttorvik.com: ", conditionMessage(e))
-  )
-  httr2::resp_check_status(resp)
-
-  txt <- httr2::resp_body_string(resp)
   raw <- jsonlite::fromJSON(txt, simplifyVector = TRUE)
 
   # trank.php returns an array-of-arrays; each inner array is one team row

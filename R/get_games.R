@@ -89,14 +89,15 @@ get_games <- function(
   referer <- paste0("https://www.barttorvik.com/gamestat.php?", base_query)
   xhr_url <- paste0("https://www.barttorvik.com/getgamestats.php?", base_query)
 
-  req <- .torvik_req(xhr_url, timeout, referer = referer)
+  req  <- .torvik_req(xhr_url, timeout, referer = referer)
+  resp <- .torvik_perform(req, as.character(season))
+  txt  <- httr2::resp_body_string(resp)
+  .torvik_check_html(txt, format = "JSON")
 
-  resp <- httr2::req_perform(req)
-  httr2::resp_check_status(resp)
-
-  txt <- httr2::resp_body_string(resp)
-
-  x <- jsonlite::fromJSON(txt, simplifyMatrix = TRUE)
+  x <- tryCatch(
+    jsonlite::fromJSON(txt, simplifyMatrix = TRUE),
+    error = function(e) stop("Failed to parse game stats JSON: ", conditionMessage(e))
+  )
 
   df <- if (is.matrix(x)) {
     as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
@@ -105,7 +106,7 @@ get_games <- function(
   } else if (is.list(x)) {
     as.data.frame(do.call(rbind, x), stringsAsFactors = FALSE, check.names = FALSE)
   } else {
-    stop("Unexpected JSON structure returned from endpoint.")
+    stop("Unexpected JSON structure returned from game stats endpoint.")
   }
 
   cols <- c(
@@ -118,14 +119,19 @@ get_games <- function(
     "AvgScoreDiff", "Opp_Barthag", "boxScore", "question"
   )
 
+  n_assign <- min(ncol(df), length(cols))
+  colnames(df)[seq_len(n_assign)] <- cols[seq_len(n_assign)]
+
   if (ncol(df) != length(cols)) {
-    stop(
-      "Column mismatch: endpoint returned ", ncol(df),
-      " columns, but expected ", length(cols), "."
+    warning(
+      "Column count mismatch in game stats: expected ", length(cols),
+      " but received ", ncol(df), ". ",
+      "barttorvik.com may have updated the endpoint. ",
+      "Partial column renaming applied.",
+      call. = FALSE
     )
   }
 
-  colnames(df) <- cols
-
-  dplyr::select(df, -question, -boxScore, -Type)
+  keep <- setdiff(names(df), c("question", "boxScore", "Type"))
+  df[, keep, drop = FALSE]
 }

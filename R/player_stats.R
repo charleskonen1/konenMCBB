@@ -65,27 +65,38 @@ player_stats <- function(
     year = as.integer(format(Sys.Date(), "%Y"))
 ) {
 
-  if (!is.numeric(year) || year < 2008) {
-    stop("`year` must be numeric and >= 2008.")
+  if (!is.numeric(year) || length(year) != 1 || year < 2008) {
+    stop("`year` must be a single numeric value >= 2008.")
   }
 
-  year_str <- as.character(year)
+  year_str <- as.character(as.integer(year))
 
+  # Note: barttorvik uses an unconventional query string here (?YEAR&csv=1)
+  # where the year is an unnamed positional parameter.
   csv_url <- paste0(
-    "https://barttorvik.com/getadvstats.php?",
-    year_str,
-    "&csv=1"
+    "https://barttorvik.com/getadvstats.php?", year_str, "&csv=1"
   )
 
-  resp <- tryCatch(
-    httr2::req_perform(.torvik_req(csv_url, timeout = 30)),
-    error = function(e) stop("Failed to reach barttorvik.com: ", conditionMessage(e))
-  )
-  httr2::resp_check_status(resp)
-  txt <- httr2::resp_body_string(resp)
-  data <- utils::read.csv(text = txt, stringsAsFactors = FALSE, check.names = FALSE)
+  req  <- .torvik_req(csv_url, timeout = 45,
+                      referer = paste0("https://barttorvik.com/playerstat.php?year=", year_str))
+  resp <- .torvik_perform(req, year_str)
+  txt  <- httr2::resp_body_string(resp)
+  .torvik_check_html(txt, format = "CSV")
 
-  playerCols <- c(
+  data <- tryCatch(
+    utils::read.csv(text = txt, stringsAsFactors = FALSE, check.names = FALSE),
+    error = function(e) stop("Failed to parse player stats CSV: ", conditionMessage(e))
+  )
+
+  if (nrow(data) == 0) {
+    stop(
+      "No player data returned for year = ", year_str, ". ",
+      "The season data may not be available yet.",
+      call. = FALSE
+    )
+  }
+
+  expected_cols <- c(
     "player_name", "team", "conf", "GP", "Min_pct",
     "ORtg", "usg", "eFG", "TS_pct", "ORB_pct", "DRB_pct", "AST_pct", "TO_pct",
     "FTM", "FTA", "FT_pct", "twoPM", "twoPA", "twoP_pct", "TPM",
@@ -104,14 +115,18 @@ player_stats <- function(
     "stl", "blk", "pts", "role", "help", "birthday"
   )
 
-  if (ncol(data) != length(playerCols)) {
-    stop(
-      "Column mismatch: expected ", length(playerCols),
-      " columns but received ", ncol(data), "."
+  n_assign <- min(ncol(data), length(expected_cols))
+  colnames(data)[seq_len(n_assign)] <- expected_cols[seq_len(n_assign)]
+
+  if (ncol(data) != length(expected_cols)) {
+    warning(
+      "Column count mismatch in player stats: expected ", length(expected_cols),
+      " but received ", ncol(data), ". ",
+      "barttorvik.com may have updated the player stats endpoint. ",
+      "Columns assigned up to column ", n_assign, ".",
+      call. = FALSE
     )
   }
-
-  colnames(data) <- playerCols
 
   tibble::as_tibble(data)
 }

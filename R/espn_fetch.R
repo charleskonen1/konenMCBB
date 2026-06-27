@@ -6,12 +6,21 @@
   if (length(event_id) != 1L) stop("`event_id` must be a single value.")
 
   url <- "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary"
-  req <- httr2::request(url)
-  req <- httr2::req_url_query(req, event = event_id)
-  req <- httr2::req_headers(req, Accept = "application/json")
-  req <- httr2::req_timeout(req, 15)
-  resp <- httr2::req_perform(req)
+  req <- httr2::request(url) |>
+    httr2::req_url_query(event = event_id) |>
+    httr2::req_headers(Accept = "application/json") |>
+    httr2::req_timeout(15) |>
+    httr2::req_retry(max_tries = 3,
+                     is_transient = \(r) httr2::resp_status(r) %in% c(429L, 503L),
+                     backoff = \(i) i * 2)
+  resp <- tryCatch(
+    httr2::req_perform(req),
+    error = function(e) stop("Failed to fetch ESPN game summary: ", conditionMessage(e))
+  )
   httr2::resp_check_status(resp)
   txt <- httr2::resp_body_string(resp)
-  jsonlite::fromJSON(txt, simplifyVector = FALSE)
+  tryCatch(
+    jsonlite::fromJSON(txt, simplifyVector = FALSE),
+    error = function(e) stop("Failed to parse ESPN game summary JSON: ", conditionMessage(e))
+  )
 }

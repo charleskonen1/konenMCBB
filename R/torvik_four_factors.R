@@ -73,16 +73,11 @@ torvik_four_factors <- function(
     "https://barttorvik.com/teamstats.php?csv=1&year=", year_str, conf_q
   )
 
-  req <- .torvik_req(url, timeout,
-                     referer = paste0("https://barttorvik.com/teamstats.php?year=", year_str))
-
-  resp <- tryCatch(
-    httr2::req_perform(req),
-    error = function(e) stop("Failed to reach barttorvik.com: ", conditionMessage(e))
-  )
-  httr2::resp_check_status(resp)
-
-  txt <- httr2::resp_body_string(resp)
+  req  <- .torvik_req(url, timeout,
+                      referer = paste0("https://barttorvik.com/teamstats.php?year=", year_str))
+  resp <- .torvik_perform(req, year_str)
+  txt  <- httr2::resp_body_string(resp)
+  .torvik_check_html(txt, format = "CSV")
 
   df <- tryCatch(
     utils::read.csv(text = txt, stringsAsFactors = FALSE, check.names = FALSE),

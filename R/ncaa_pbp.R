@@ -49,13 +49,22 @@ ncaa_pbp <- function(game_id) {
       `User-Agent` = "konenMCBB R package (github.com/charleskonen1/konenMCBB)",
       Referer      = paste0("https://www.ncaa.com/game/", game_id, "/play-by-play")
     ) |>
-    httr2::req_timeout(20)
+    httr2::req_timeout(20) |>
+    httr2::req_retry(max_tries = 3,
+                     is_transient = \(r) httr2::resp_status(r) %in% c(429L, 503L),
+                     backoff = \(i) i * 2)
 
-  resp <- httr2::req_perform(req)
+  resp <- tryCatch(
+    httr2::req_perform(req),
+    error = function(e) stop("Failed to fetch play-by-play from NCAA API: ", conditionMessage(e))
+  )
   httr2::resp_check_status(resp)
 
   txt <- httr2::resp_body_string(resp)
-  j   <- jsonlite::fromJSON(txt, flatten = TRUE)
+  j   <- tryCatch(
+    jsonlite::fromJSON(txt, flatten = TRUE),
+    error = function(e) stop("Failed to parse play-by-play JSON: ", conditionMessage(e))
+  )
 
   periods <- j$data$playbyplay$periods
 
