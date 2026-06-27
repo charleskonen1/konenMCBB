@@ -1,18 +1,18 @@
-# Internal helpers — barttorvik.com request utilities.
+# Internal helpers -- barttorvik.com request utilities.
 #
 # All Torvik scraper functions route through these helpers so that
 # bot-detection fixes, polite delays, and error handling only need
 # to happen in one place.
 
-# ── .torvik_req ──────────────────────────────────────────────────────────────
+# == .torvik_req ==============================================================
 # Build a barttorvik.com httr2 request with browser-like headers.
-# A random 1–2 second polite delay is injected before the request object is
+# A random 1-2 second polite delay is injected before the request object is
 # returned, so consecutive calls from the same session are naturally spaced out.
 # Retries up to 3 times (3 s, 6 s back-off) on 429 / 503 responses.
 .torvik_req <- function(url, timeout = 20,
                         referer = "https://barttorvik.com/") {
-  # Polite delay — avoids hammering the server / Cloudflare rate-limits
-  Sys.sleep(runif(1, 1.0, 2.0))
+  # Polite delay -- avoids hammering the server / Cloudflare rate-limits
+  Sys.sleep(stats::runif(1, 1.0, 2.0))
 
   httr2::request(url) |>
     httr2::req_headers(
@@ -34,7 +34,7 @@
     )
 }
 
-# ── .torvik_perform ──────────────────────────────────────────────────────────
+# == .torvik_perform ==========================================================
 # Perform a prepared barttorvik request with unified error handling.
 # Distinguishes 404 (off-season / data not available) from other failures
 # and surfaces an actionable message in both cases.
@@ -51,8 +51,8 @@
           "barttorvik.com returned 404 Not Found",
           if (!is.null(year_str)) paste0(" (year = ", year_str, ")") else "",
           ".\n",
-          "This usually means data for this season isn't on the server yet. ",
-          "College basketball data typically runs November–April. ",
+          "This usually means data for this season is not on the server yet. ",
+          "College basketball data typically runs November-April. ",
           "Try an earlier season year (e.g., ", prev_year, ").",
           call. = FALSE
         )
@@ -61,7 +61,7 @@
     }
   )
 
-  # httr2 < 1.0 returns the response instead of raising — handle that too
+  # httr2 < 1.0 returns the response instead of raising -- handle that too
   status <- httr2::resp_status(resp)
   if (status == 404L) {
     prev_year <- if (!is.null(year_str)) {
@@ -71,7 +71,7 @@
       "barttorvik.com returned 404 Not Found",
       if (!is.null(year_str)) paste0(" (year = ", year_str, ")") else "",
       ".\n",
-      "This usually means data for this season isn't on the server yet. ",
+      "This usually means data for this season is not on the server yet. ",
       "Try an earlier season year (e.g., ", prev_year, ").",
       call. = FALSE
     )
@@ -81,7 +81,7 @@
   resp
 }
 
-# ── .torvik_check_html ───────────────────────────────────────────────────────
+# == .torvik_check_html =======================================================
 # Detect if the server returned an HTML page (Cloudflare challenge / block)
 # instead of the expected JSON or CSV payload.
 .torvik_check_html <- function(txt, format = "data") {
@@ -89,7 +89,7 @@
     stop(
       "barttorvik.com returned an HTML page instead of ", format, ". ",
       "This usually means Cloudflare bot-detection was triggered. ",
-      "Wait 30–60 seconds, then try again.",
+      "Wait 30-60 seconds, then try again.",
       call. = FALSE
     )
   }

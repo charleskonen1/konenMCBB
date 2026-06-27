@@ -66,7 +66,7 @@ player_stats <- function(
 ) {
 
   if (!is.numeric(year) || length(year) != 1 || year < 2008) {
-    stop("`year` must be a single numeric value >= 2008.")
+    stop("`year` must be numeric and >= 2008.")
   }
 
   year_str <- as.character(as.integer(year))

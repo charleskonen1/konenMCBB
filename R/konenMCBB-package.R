@@ -79,6 +79,6 @@
 #' that bulk-loads all local RDS files into a PostgreSQL database using the
 #' schema defined in `schema.sql`. This powers the public stats website.
 #'
-#' @importFrom stats setNames
+#' @importFrom stats setNames runif
 #' @keywords internal
 "_PACKAGE"
