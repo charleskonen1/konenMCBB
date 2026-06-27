@@ -1,0 +1,2113 @@
+---
+title: "practice"
+output: html_document
+---
+
+```{r}
+
+library(rvest)
+library(dplyr)
+```
+
+```{r}
+library(rvest)
+url <- "https://barttorvik.com/team.php?team=Duke"
+webpage <- read_html(url) 
+
+print(webpage)
+teams <- webpage %>% 
+  html_elements("body") 
+print(teams)
+
+```
+
+```{r}
+
+t_rank <- function(year = 2026, start_date = NULL, end_date = NULL){
+  if ( (is.numeric(year)) && (is.null(start_date)) && (is.null(end_date)))
+    {
+    year_str <- as.character(year)
+    csv_url <- paste0("https://barttorvik.com/trank.php?year=2022&sort=&hteam=&t2value=&conlimit=All&state=All&begin=20211101&end=20220501&top=0&revquad=0&quad=5&venue=H&type=All&mingames=0&csv-1#")
+    print(csv_url)
+    csv <- read.csv(csv_url)
+    data <- data.frame(csv)
+    return(data)
+  }
+
+}
+print(t_rank(year=2023))
+```
+
+
+```{r}
+#install.packages("jsonlite")
+#library(jsonlite)
+json_data <- fromJSON("https://barttorvik.com/trank.php?year=2023&sort=&hteam=&t2value=&conlimit=AE&state=All&begin=20221101&end=20230501&top=0&revquad=0&quad=5&venue=All&type=All&mingames=0#")
+
+
+```
+```{r}
+# Install the package if you haven't already
+# install.packages("jsonlite")
+
+install.packages(c("jsonlite", "R.utils"))
+library(jsonlite)
+library(R.utils)
+
+u <- "https://barttorvik.com/timemachine/team_results/20141113_team_results.json.gz"
+gz_path <- tempfile(fileext = ".json.gz")
+json_path <- tempfile(fileext = ".json")
+
+download.file(u, gz_path, mode = "wb", quiet = TRUE)
+gunzip(gz_path, destname = json_path, overwrite = TRUE, remove = FALSE)
+
+x <- fromJSON(json_path)
+print(x)
+
+
+```
+
+```{r}
+# Define the file path
+file_path <- "https://barttorvik.com/trank.php?year=2022&sort=&hteam=&t2value=&conlimit=All&state=All&begin=20211101&end=20220501&top=0&revquad=0&quad=5&venue=H&type=All&mingames=0&json=1.gz"
+
+# Open a connection to the gzipped file and read the JSON data
+# fromJSON automatically handles the data structure conversion
+json_data <- fromJSON(gzfile(file_path))
+
+# View the structure of the imported data
+str(json_data)
+```
+```{r}
+#date must be after 20141113
+#format should be YYYYMMDD
+timeMachine_ratings <- function(date){
+  dateC <- as.integer(date)
+  cur_date <- format(Sys.Date(), "%Y%m%d")
+  if (dateC >= 20141113 && dateC < cur_date){
+    dateChar <- as.character(dateC)
+    csv_url <- paste0("https://barttorvik.com/",year_str,"_team_results.csv")
+    u <- paste0("https://barttorvik.com/timemachine/team_results/",dateChar,"_team_results.json.gz")
+    gz_path <- tempfile(fileext = ".json.gz")
+    json_path <- tempfile(fileext = ".json")
+
+    download.file(u, gz_path, mode = "wb", quiet = TRUE)
+    gunzip(gz_path, destname = json_path, overwrite = TRUE, remove = FALSE)
+
+    x <- fromJSON(json_path)
+    x <- fromJSON(json_path)
+
+    # Force to data.frame (preserve names; don't auto-mangle)
+    df <- as.data.frame(x, check.names = FALSE)
+
+    # Your desired headings (tab-separated)
+    hdr <- strsplit(
+      "rank\tteam\tconf\trecord\tadjoe\toe Rank\tadjde\tde Rank\tbarthag\trank\tproj. W\tProj. L\tPro Con W\tPro Con L\tCon Rec.\tsos\tncsos\tconsos\tProj. SOS\tProj. Noncon SOS\tProj. Con SOS\telite SOS\telite noncon SOS\tOpp OE\tOpp DE\tOpp Proj. OE\tOpp Proj DE\tCon Adj OE\tCon Adj DE\tQual O\tQual D\tQual Barthag\tQual Games\tFUN\tConPF\tConPA\tConPoss\tConOE\tConDE\tConSOSRemain\tConf Win%\tWAB\tWAB Rk\tFun Rk\tadjt",
+      "\t",
+      fixed = TRUE
+    )[[1]]
+
+    # sanity check
+    if (ncol(df) != length(hdr)) {
+      stop("Column mismatch: df has ", ncol(df), " cols but hdr has ", length(hdr))
+    }
+
+    # Make unique because 'rank' appears twice
+    colnames(df) <- make.unique(hdr, sep = "_")
+
+    return(df)
+
+  }
+  else{
+    return("invalid input")
+  }
+}
+print(timeMachine_ratings(20260110))
+```
+
+```{r}
+library(httr2)
+
+referer <- "https://www.barttorvik.com/gamestat.php?sIndex=0&year=2026&tvalue=Duke&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1"
+
+xhr_url <- "https://www.barttorvik.com/getgamestats.php?sIndex=0&year=2026&tvalue=Duke&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1"
+
+library(httr2)
+library(jsonlite)
+
+resp <- request(xhr_url) |>
+  req_headers(
+    Referer = referer,
+    Accept = "*/*"
+  ) |>
+  req_perform()
+
+txt <- resp_body_string(resp)
+print(txt)
+# Parse JSON
+x <- fromJSON(txt)
+print(x)
+str(x)
+
+
+
+```
+
+```{r}
+
+referer <- "https://www.barttorvik.com/gamestat.php?sIndex=0&year=2026&tvalue=Army&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1"
+
+xhr_url <- "https://www.barttorvik.com/getgamestats.php?sIndex=0&year=2026&tvalue=Army&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1"
+
+library(httr2)
+library(jsonlite)
+
+resp <- request(xhr_url) |>
+  req_headers(
+    Referer = referer,
+    Accept = "*/*"
+  ) |>
+  req_perform()
+
+txt <- resp_body_string(resp)
+print(txt)
+# Parse JSON
+x <- fromJSON(txt)
+print(x)
+str(x)
+```
+
+
+
+
+
+
+
+```{r}
+get_games <- function() {
+timeout=15
+referer <- "https://www.barttorvik.com/gamestat.php?sIndex=0&year=2026&tvalue=All&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1"
+
+
+xhr_url <- "https://www.barttorvik.com/getgamestats.php?sIndex=0&year=2026&tvalue=All&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1"
+  # Column names exactly as you provided (23 columns)
+  cols <- c("Date", "Type", "Team", "Conf", "Opp", "Venue", "Result",
+    "Adj. O", "Adj. D",
+    "O_EFF", "O_eFG%", "O_TO%", "O_Reb%", "O_FTR",
+    "D_EFF", "D_eFG%", "D_TO%", "D_Reb%", "D_FTR", "GameScore",
+    "Opp_Conf","IDOrder", "Season", "Tempo", "gameID", "Coach", "OppCoach",
+    "AvgScoreDiff", "Opp_Barthag", "array", "question"
+  )
+
+  # Build request (no User-Agent)
+  req <- httr2::request(xhr_url) |>
+    httr2::req_headers(Accept = "*/*") |>
+    httr2::req_timeout(timeout)
+
+  if (!is.null(referer)) {
+    stopifnot(is.character(referer), length(referer) == 1L)
+    req <- req |> httr2::req_headers(Referer = referer)
+  }
+
+  resp <- req |> httr2::req_perform()
+  httr2::resp_check_status(resp)
+
+  txt <- httr2::resp_body_string(resp)
+
+  # Parse JSON; for array-of-arrays this often simplifies to a matrix
+  x <- jsonlite::fromJSON(txt, simplifyMatrix = TRUE)
+
+  # Convert to data.frame robustly
+  df <- if (is.matrix(x)) {
+    as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+  } else if (is.data.frame(x)) {
+    as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+  } else if (is.list(x)) {
+    as.data.frame(do.call(rbind, x), stringsAsFactors = FALSE, check.names = FALSE)
+  } else {
+    stop("Unexpected JSON structure returned from endpoint.")
+  }
+
+  # Validate column count before naming
+  if (ncol(df) != length(cols)) {
+    stop(
+      "Column mismatch: endpoint returned ", ncol(df),
+      " columns, but expected ", length(cols), "."
+    )
+  }
+
+  colnames(df) <- cols
+  df2 <- df %>% 
+    select(-`question`, -`array`)
+  df2
+}
+print(head(get_games(),1))
+
+```
+```{r}
+get_games <- function(team= "All", season = 2026, quad = "All") {
+  timeout=15
+  quadToggle = ""
+  if(quad != "All"){
+    if(quad == 1 || quad == 2|| quad == 3|| quad == 4){
+      quadToggle = paste0("&quad=",quad)
+      print(quadToggle)
+    }
+    else{
+      print("incorrent quad input")
+    }
+  }
+  year = as.character(season)
+  referer <- paste0("https://www.barttorvik.com/gamestat.php?sIndex=0&year=",year,"&tvalue=",team,"&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1",quadToggle)
+
+
+
+  xhr_url <- paste0("https://www.barttorvik.com/getgamestats.php?sIndex=0&year=",year,"&tvalue=",team,"&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1",quadToggle)
+  # Column names exactly as you provided (23 columns)
+  cols <- c("Date", "Type", "Team", "Conf", "Opp", "Venue", "Result",
+            "Adj. O", "Adj. D",
+            "O_EFF", "O_eFG%", "O_TO%", "O_Reb%", "O_FTR",
+            "D_EFF", "D_eFG%", "D_TO%", "D_Reb%", "D_FTR", "GameScore",
+            "Opp_Conf","IDOrder", "Season", "Tempo", "gameID", "Coach", "OppCoach",
+            "AvgScoreDiff", "Opp_Barthag", "boxScore", "question"
+  )
+
+  # Build request (no User-Agent)
+  req <- httr2::request(xhr_url) |>
+    httr2::req_headers(Accept = "*/*") |>
+    httr2::req_timeout(timeout)
+
+  if (!is.null(referer)) {
+    stopifnot(is.character(referer), length(referer) == 1L)
+    req <- req |> httr2::req_headers(Referer = referer)
+  }
+
+  resp <- req |> httr2::req_perform()
+  httr2::resp_check_status(resp)
+
+  txt <- httr2::resp_body_string(resp)
+
+  # Parse JSON; for array-of-arrays this often simplifies to a matrix
+  x <- jsonlite::fromJSON(txt, simplifyMatrix = TRUE)
+
+  # Convert to data.frame robustly
+  df <- if (is.matrix(x)) {
+    as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+  } else if (is.data.frame(x)) {
+    as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+  } else if (is.list(x)) {
+    as.data.frame(do.call(rbind, x), stringsAsFactors = FALSE, check.names = FALSE)
+  } else {
+    stop("Unexpected JSON structure returned from endpoint.")
+  }
+
+  # Validate column count before naming
+  if (ncol(df) != length(cols)) {
+    stop(
+      "Column mismatch: endpoint returned ", ncol(df),
+      " columns, but expected ", length(cols), "."
+    )
+  }
+
+  colnames(df) <- cols
+  df2 <- df %>%
+    select(-`question`, -`boxScore`, -`Type`)
+  return(df2)
+}
+print(head(get_games(team= "Duke", season = 2025), 30))
+```
+```{r}
+
+gameBoxScore <- function(team= "All", season = 2026) {
+  timeout=5
+  year = as.character(season)
+  referer <- paste0("https://www.barttorvik.com/gamestat.php?sIndex=0&year=",year,"&tvalue=",team,"&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1")
+  
+  
+  xhr_url <- paste0("https://www.barttorvik.com/getgamestats.php?sIndex=0&year=",year,"&tvalue=",team,"&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1")
+  # Column names exactly as you provided (23 columns)
+  cols <- c("Date", "Type", "Team", "Conf", "Opp", "Venue", "Result",
+            "Adj. O", "Adj. D",
+            "O_EFF", "O_eFG%", "O_TO%", "O_Reb%", "O_FTR",
+            "D_EFF", "D_eFG%", "D_TO%", "D_Reb%", "D_FTR", "GameScore",
+            "Opp_Conf","IDOrder", "Season", "Tempo", "gameID", "Coach", "OppCoach",
+            "AvgScoreDiff", "Opp_Barthag", "boxScore", "question"
+  )
+  
+  # Build request (no User-Agent)
+  req <- httr2::request(xhr_url) |>
+    httr2::req_headers(Accept = "*/*") |>
+    httr2::req_timeout(timeout)
+  
+  if (!is.null(referer)) {
+    stopifnot(is.character(referer), length(referer) == 1L)
+    req <- req |> httr2::req_headers(Referer = referer)
+  }
+  
+  resp <- req |> httr2::req_perform()
+  httr2::resp_check_status(resp)
+  
+  txt <- httr2::resp_body_string(resp)
+  
+  # Parse JSON; for array-of-arrays this often simplifies to a matrix
+  x <- jsonlite::fromJSON(txt, simplifyMatrix = TRUE)
+  print(dim(x))
+  y <- jsonlite::fromJSON(x[30], simplifyMatrix = TRUE)
+  # Convert to data.frame robustly
+  df <- if (is.matrix(x)) {
+    as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+  } else if (is.data.frame(x)) {
+    as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+  } else if (is.list(x)) {
+    as.data.frame(do.call(rbind, x), stringsAsFactors = FALSE, check.names = FALSE)
+  } else {
+    stop("Unexpected JSON structure returned from endpoint.")
+  }
+  
+  # Validate column count before naming
+  if (ncol(df) != length(cols)) {
+    stop(
+      "Column mismatch: endpoint returned ", ncol(df),
+      " columns, but expected ", length(cols), "."
+    )
+  }
+  
+  colnames(df) <- cols
+  df2 <- df %>%
+    select(-`question`, -`boxScore`, -`Type`)
+  return(df2)
+}
+print(head(gameBoxScore(team = "Duke"),2))
+```
+
+
+```{r}
+timeout=15
+season =2026
+team = "Duke"
+  year = as.character(season)
+  referer <- paste0("https://www.barttorvik.com/gamestat.php?sIndex=0&year=",year,"&tvalue=",team,"&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1")
+  
+  
+  xhr_url <- paste0("https://www.barttorvik.com/getgamestats.php?sIndex=0&year=",year,"&tvalue=",team,"&cvalue=All&opcvalue=All&ovalue=All&minwin=All&mindate=&maxdate=&typev=All&venvalue=All&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min&tovSelect=max&rebSelect=min&ftrSelect=min&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max&gscriptSelect=min&sortToggle=1")
+  # Column names exactly as you provided (23 columns)
+  cols <- c("Date", "Type", "Team", "Conf", "Opp", "Venue", "Result",
+            "Adj. O", "Adj. D",
+            "O_EFF", "O_eFG%", "O_TO%", "O_Reb%", "O_FTR",
+            "D_EFF", "D_eFG%", "D_TO%", "D_Reb%", "D_FTR", "GameScore",
+            "Opp_Conf","IDOrder", "Season", "Tempo", "gameID", "Coach", "OppCoach",
+            "AvgScoreDiff", "Opp_Barthag", "boxScore", "question"
+  )
+  
+  # Build request (no User-Agent)
+  req <- httr2::request(xhr_url) |>
+    httr2::req_headers(Accept = "*/*") |>
+    httr2::req_timeout(timeout)
+  
+  if (!is.null(referer)) {
+    stopifnot(is.character(referer), length(referer) == 1L)
+    req <- req |> httr2::req_headers(Referer = referer)
+  }
+  
+  resp <- req |> httr2::req_perform()
+  httr2::resp_check_status(resp)
+  
+  txt <- httr2::resp_body_string(resp)
+  
+  # Parse JSON; for array-of-arrays this often simplifies to a matrix
+  x <- jsonlite::fromJSON(txt, simplifyMatrix = TRUE)
+
+  y <- jsonlite::fromJSON(x[,30], simplifyMatrix = TRUE)
+  # Convert to data.frame robustly
+  print(typeof(x[,30]))
+  print(is.matrix(x[,30]))
+  df <- if (is.matrix(x[,30])) {
+    as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+  } else if (is.data.frame(x[,30])) {
+    as.data.frame(x, stringsAsFactors = FALSE, check.names = FALSE)
+  } else if (is.list(x)) {
+    as.data.frame(do.call(rbind, x), stringsAsFactors = FALSE, check.names = FALSE)
+  } else {
+    stop("Unexpected JSON structure returned from endpoint.")
+  }
+  
+  # Validate column count before naming
+  if (ncol(df) != length(cols)) {
+    stop(
+      "Column mismatch: endpoint returned ", ncol(df),
+      " columns, but expected ", length(cols), "."
+    )
+  }
+  
+  colnames(df) <- cols
+  df2 <- df %>%
+    select(-`question`, -`boxScore`, -`type`)
+  return(df2)
+
+```
+
+```{r}
+gameBoxScore <- function(team = "All", season = 2026, timeout = 15) {
+  
+  year <- as.character(season)
+  team_q <- utils::URLencode(team, reserved = TRUE)
+
+  base_params <- paste0(
+    "sIndex=0",
+    "&year=", year,
+    "&tvalue=", team_q,
+    "&cvalue=All&opcvalue=All&ovalue=All&minwin=All",
+    "&mindate=&maxdate=&typev=All&venvalue=All",
+    "&minadjo=0&minadjd=200&mintempo=0&minppp=0&minefg=0&mintov=200&minreb=0&minftr=0",
+    "&minpppd=200&minefgd=200&mintovd=0&minrebd=200&minftrd=200",
+    "&mings=0&mingscript=-100&maxx=100&coach=All&opcoach=All",
+    "&adjoSelect=min&adjdSelect=max&tempoSelect=min&pppSelect=min&efgSelect=min",
+    "&tovSelect=max&rebSelect=min&ftrSelect=min",
+    "&pppdSelect=max&efgdSelect=max&tovdSelect=min&rebdSelect=max&ftrdSelect=max",
+    "&gscriptSelect=min&sortToggle=1"
+  )
+
+  referer <- paste0("https://www.barttorvik.com/gamestat.php?", base_params)
+  xhr_url <- paste0("https://www.barttorvik.com/getgamestats.php?", base_params)
+
+  req <- httr2::request(xhr_url) |>
+    httr2::req_headers(
+      Accept = "*/*",
+      Referer = referer,
+      `User-Agent` = "Mozilla/5.0"
+    ) |>
+    httr2::req_timeout(timeout)
+
+  resp <- httr2::req_perform(req)
+  httr2::resp_check_status(resp)
+
+  txt <- httr2::resp_body_string(resp)
+
+  # This endpoint returns a table-like structure; keep it as a data.frame
+  x <- jsonlite::fromJSON(txt, simplifyDataFrame = TRUE, simplifyMatrix = TRUE)
+
+  if (is.matrix(x)) x <- as.data.frame(x, stringsAsFactors = FALSE)
+  if (!is.data.frame(x)) stop("Unexpected JSON structure: expected data.frame/matrix-like object.")
+
+  if (ncol(x) < 30) stop("Unexpected JSON structure: fewer than 30 columns returned; cannot extract column 30.")
+
+  v <- x[[30]]
+
+  if (!is.character(v)) stop("Unexpected JSON structure: column 30 is not character JSON strings.")
+
+  cols <- c(
+    "date",
+    "question",
+    "AwayTeam",
+    "HomeTeam",
+    "Away Fg made",
+    "Away Fg Att",
+    "Away 3pt Fg Made",
+    "Away 3pt Fg Att",
+    "Away FT made",
+    "Away FT att",
+    "Away Orb",
+    "Away Drb",
+    "Away Rbs",
+    "Away Asts",
+    "Away Steals",
+    "Away Blocks",
+    "Away Turnovers",
+    "Away Fouls",
+    "Away Score",
+    "Home Fg made",
+    "Home Fg Att",
+    "Home 3pt Fg Made",
+    "Home 3pt Fg Att",
+    "Home FT made",
+    "Home FT att",
+    "Home Orb",
+    "Home Drb",
+    "Home Rbs",
+    "Home Asts",
+    "Home Steals",
+    "Home Blocks",
+    "Home Turnovers",
+    "Home Fouls",
+    "Home Score",
+    "Pace",
+    "backslash",
+    "Repeat1",
+    "Repeat2"
+  )
+
+  # Parse each JSON string row into a vector
+  rows <- lapply(v, function(s) {
+    r <- jsonlite::fromJSON(s)
+    unlist(r, use.names = FALSE)
+  })
+
+  # Validate row widths
+  widths <- vapply(rows, length, integer(1))
+  if (any(widths != length(cols))) {
+    bad <- which(widths != length(cols))[1]
+    stop(
+      "Parsed row length mismatch. Expected ", length(cols),
+      " fields but got ", widths[bad],
+      " at row index ", bad, "."
+    )
+  }
+
+  mat <- do.call(rbind, rows)
+  df <- as.data.frame(mat, stringsAsFactors = FALSE, check.names = FALSE)
+  names(df) <- cols
+
+  # Return cleaned version
+  df2 <- df |>
+    dplyr::select(-question, -backslash, -Repeat1, -Repeat2)
+
+  df2
+}
+
+
+print(gameBoxScore(team = "Duke", season = 2026))
+```
+
+```{r}
+get_super_sked <- function(year = (as.integer(format(Sys.Date(), "%Y"))))
+{
+  if (is.numeric(year) && (year >= 2008)){
+    year_str <- as.character(year)
+    csv_url <- paste0("https://barttorvik.com/",year_str,"_super_sked.csv")
+    csv <- read.csv(csv_url)
+    data <- data.frame(csv)
+    return(data)
+  }
+  else{
+    return(print("Incorrect input! Please enter a year that is after 2007"))
+  }
+}
+
+print(get_super_sked())
+```
+
+```{r}
+college_games <- get_super_sked()
+library(dplyr)
+duke_games <- college_games %>%
+  filter(team1 == "Duke" | team2 == "Duke")
+print(duke_games)
+```
+```{r}
+?sort()
+todayTTQ <- college_games %>%
+  filter(Date == "1/23/26") %>%
+  arrange(desc(ttq))
+print(todayTTQ)
+```
+
+```{r}
+library(stringr)
+strPrac <- duke_games$prediction[1]
+
+columnnOrig <- duke_games$prediction
+
+print(columnnOrig)
+
+splitPred <- str_split(columnnOrig, ", ", simplify = TRUE)
+
+print(class(splitPred))
+print(splitPred[1,2])
+#splitCol <- c("L", "R") 
+newColDF <- data.frame(splitPred)
+
+colDF1 <-data.frame(str_split(newColDF$X1, '-', simplify = TRUE))
+colDF2 <-data.frame(str_split(newColDF$X2, ' ', simplify = TRUE))
+
+print(colDF1)
+duke_games$predicted_score <- colDF2$X1
+duke_games$pctChanceWin <- colDF2$X2
+duke_games$favored_team <- colDF1$X1
+duke_games$line <- colDF1$X2
+
+
+print(duke_games)
+
+part1 <- str_split(strPrac, ", ", simplify = TRUE)
+print(part1[20])
+column1 <- str_split(part1[1], " ", simplify = TRUE)
+print(column1)
+
+```
+
+```{r}
+college_games <- get_super_sked()
+library(dplyr)
+duke_games <- college_games %>%
+  filter(team1 == "Duke" | team2 == "Duke")
+print(duke_games)
+print(college_games)
+```
+
+```{r}
+player_stats <- read.csv("https://barttorvik.com/getadvstats.php?year=2020&start=20200101&end=20200202&csv=1")
+playerCols <- c("player_name","team",	"conf",	"GP",	"Min%",	"ORtg",	"usg",	"eFG",	"TS%",	"ORB%",	"DRB%",	"AST%",	"TO%",	"FTM",	"FTA",	"FT%",	"twoPM",	"twoPA",	"twoP%",	"TPM",	"TPA",	"TP%",	"blk%",	"stl%",	"ftr%",	"yr",	"ht",	"num",	"porpag",	"adjoe",	"pfr",	"year",	"pid",	"Hometown",	"Recruit_TRank (0-100)", "ast/tov",	 "rimmade",	 "rimmade+rimmiss", "midmade",	 "midmade+midmiss", "rimmade/(rimidmade+rimmiss)", "midmade/(midmade+midmiss)",	 "dunksmade",	 "dunksmiss+dunksmade",	 "dunksmade/(dunksmade+dunksmiss)", "pick", "drtg",	"adrtg", "dporpag", "stops", "bpm", "obpm",	 "dbpm", "gbpm", "mp", "ogbpm",	"dgbpm",	"oreb",	"dreb",	"treb",	"ast",	"stl","blk",	"pts",	"role","help",	"birthday")
+names(player_stats) <- playerCols
+print(player_stats)
+?arrange
+player_stats %>%
+  filter(player_name == "Cameron Boozer")
+
+player_stats %>%
+  arrange(pick)
+print(player_stats)
+```
+
+```{r}
+team_descriptor <- get_games()
+#https://barttorvik.com/team-tables_each.php
+```
+
+
+```{r}
+games <- get_super_sked()
+
+print(format(Sys.Date(), "%#m/%#d/%y"))
+today_games <- games %>%
+  filter(Date == format(Sys.Date(), "%-m/%-d/%y"))
+print(today_games)
+
+format(Sys.Date(), "%m/%d/%y")
+```
+```{r}
+library(rvest)
+url <- "https://www.boydsbets.com/ncaa-basketball-injuries/"
+webpage <- read_html(url) 
+
+print(webpage)
+teams <- webpage %>% 
+  html_elements("body") 
+
+print(teams[[1]])
+
+  
+help <- teams[[1]] %>%
+  html_element("div.container-fluid.container-home.container-injuries")
+print(help)
+help %>%
+  html_element("div")
+```
+```{r}
+url <- "https://www.scacchoops.com/acc-mens-basketball-injury-report"
+webpage <- read_html(url) 
+
+print(webpage)
+teams <- webpage %>% 
+  html_elements("body") 
+print(teams[[1]])
+page |> html_elements("PASTE_SELECTOR_HERE") |> html_text2()
+
+page <- read_html(url)
+
+node <- page |> html_elements("div") |> 
+  keep(~ html_text2(.x) == "#9 Khani Rooths")
+
+node
+library(stringr)
+
+divs <- page |> html_elements("div")
+hit  <- divs[str_detect(html_text2(divs), fixed("#9 Khani Rooths"))]
+
+html_text2(hit)
+```
+
+```{r}
+install.packages("chromote")
+library(chromote)
+library(rvest)
+library(dplyr)
+library(stringr)
+
+url <- "https://theacc.com/sports/2025/12/29/availability-reporting-mbb.aspx"
+
+b <- ChromoteSession$new()
+b$Page$navigate(url)
+b$Page$loadEventFired()
+Sys.sleep(3)  # give the app time to render
+
+html <- b$Runtime$evaluate("document.documentElement.outerHTML")$result$value
+page <- read_html(html)
+
+# You must inspect the rendered DOM to get the right selectors:
+# Example skeleton:
+players <- page |>
+  html_elements("#root > div > div > div > div:nth-child(2) > div:nth-child(3) > div:nth-child(4) > div") |>
+  html_text2()
+print(players)
+status <- page |>
+  html_elements("CSS_SELECTOR_FOR_STATUS") |>
+  html_text2()
+
+tibble(players, status) |>
+  filter(str_to_lower(status) != "available")
+
+```
+
+
+```{r}
+
+library(rvest)
+url <- "https://www.covers.com/sport/basketball/ncaab/injuries"
+webpage <- read_html(url)
+
+body <- webpage %>%
+  html_element("body") 
+
+step <- body %>%
+  html_element("#content > div > div > section:nth-child(9)") %>%
+  html_table()
+
+
+#content > div > div > section:nth-child(5)
+print(step)
+```
+
+
+```{r}
+#consider adding 
+PlayerBoxScore <- function(name, season, team){
+  ticker = 1
+  name_str = gsub(" ", "-", name)
+  if(!(is.character(name))){
+    print("Please enter a name")
+  }
+  playerBoxCols <- c("Row",
+                     "Gcar",
+                     "GameNum",
+                     "Date",
+                     "Team",
+                     "Venue",
+                     "Opponent",
+                     "TypeGame",
+                     "Score",
+                     "GS",
+                     "MP",
+                     "FG",
+                     "FGA",
+                     "FG%",
+                     "3P",
+                     "3PA",
+                     "3P%",
+                     "2P",
+                     "2PA",
+                     "2P%",
+                     "eFG%",
+                     "FT",
+                     "FTA",
+                     "FT%",
+                     "ORB",
+                     "DRB",
+                     "TRB",
+                     "AST",
+                     "STL",
+                     "BLK",
+                     "TOV",
+                     "PF",
+                     "PTS",
+                     "GmSc")
+  
+  cont = TRUE
+  while (cont) {
+    ticker_str = as.character(ticker)
+    year_str = as.character(season)
+    url = paste0("https://www.sports-reference.com/cbb/players/",name_str,"-",ticker,"/gamelog/",season,"/")
+    webpage <- read_html(url)
+    table <- tryCatch(
+      {
+        webpage %>%
+          html_element("tbody") %>%
+          html_table(fill = TRUE)
+      },
+      error = function(e){
+        message("Failed to extract table: ", e$message)
+        NULL
+      }
+    
+    )
+    if(is.null(table)){
+      ticker = ticker + 1
+    }
+    else{
+    df_box = as.data.frame(table)
+    names(df_box) = playerBoxCols
+    if (df_box$Team[1] == team){
+      return(df_box)
+      cont = FALSE
+    }
+    }
+    Sys.sleep(1.0)
+    if(ticker >= 6){
+      print("Bad query!")
+      break
+    }
+
+  }
+  
+  
+}
+PlayerBoxScore("Charlie Konen", 2026, "Duke")
+```
+
+```{r}
+
+url <- "https://www.covers.com/sport/basketball/ncaab/injuries"
+webpage <- read_html(url)
+df_team = as.data.frame(table)
+injury_cols = c("Player", "POS", "Status", "Description")
+df <- data.frame(
+  col_A = character(0),
+  col_B = character(0),
+  col_C = character(0),
+  col_D = character(0))
+  ticker = 3
+
+for(i in 1:370){
+  body <- webpage %>%
+    html_element("body")
+  child = as.character(ticker)
+  search_str = paste0("#content > div > div > section:nth-child(",child,")")
+  break_check = FALSE
+  table <- tryCatch(
+    {
+      body %>%
+        html_element(search_str) %>%
+        html_table()
+    },
+    error = function(e) {
+      message("Stopping loop at ticker = ", ticker)
+      break_check = TRUE
+    }
+  )
+  if(break_check == TRUE){
+    break
+  }
+
+  team <- body %>%
+    html_element(paste0("#content > div > div > section:nth-child(",child,") > 
+                 div > div > div.row > div.col-xs-5 > div > a")) %>%
+    html_text2()
+  team_name <- sub(paste0('\n', ".*"), "", team)
+
+df_team = as.data.frame(table)
+#concering fix 
+  if(nrow(df_team) > 1){
+
+    names(df_team) = injury_cols
+    df_team$Team = team_name
+    df <- rbind(df, df_team)
+  }
+  ticker = ticker + 2
+  
+}
+
+  df_clean <- df %>%
+  mutate(
+    Description = if_else(
+      is.na(Description),
+      lead(Description),
+      Description
+    )
+  ) 
+df_final <- df_clean %>%
+  filter(Description != Player)
+  print(df_final)
+
+```
+
+```{r}
+injuryList <- function(){
+
+  url <- "https://www.covers.com/sport/basketball/ncaab/injuries"
+  webpage <- read_html(url)
+  df_team = as.data.frame(table)
+  injury_cols = c("Player", "POS", "Status", "Description")
+  df <- data.frame(
+    col_A = character(0),
+    col_B = character(0),
+    col_C = character(0),
+    col_D = character(0))
+  ticker = 3
+
+  for(i in 1:370){
+    body <- webpage %>%
+      html_element("body")
+    child = as.character(ticker)
+    search_str = paste0("#content > div > div > section:nth-child(",child,")")
+    break_check = FALSE
+    table <- tryCatch(
+      {
+        body %>%
+          html_element(search_str) %>%
+          html_table()
+      },
+      error = function(e) {
+        message("Stopping loop at ticker = ", ticker)
+        break_check = TRUE
+      }
+    )
+    if(break_check == TRUE){
+      break
+    }
+
+    team <- body %>%
+      html_element(paste0("#content > div > div > section:nth-child(",child,") >
+                 div > div > div.row > div.col-xs-5 > div > a")) %>%
+      html_text2()
+    team_name <- sub(paste0('\n', ".*"), "", team)
+
+    df_team = as.data.frame(table)
+    #concering fix
+    if(nrow(df_team) > 1){
+
+      names(df_team) = injury_cols
+      df_team$Team = team_name
+      df <- rbind(df, df_team)
+    }
+    ticker = ticker + 2
+
+  }
+
+  df_clean <- df %>%
+    mutate(
+      Description = if_else(
+        is.na(Description),
+        lead(Description),
+        Description
+      )
+    )
+  df_final <- df_clean %>%
+    filter(Description != Player)
+
+  return(df_final)
+}
+print(injuryList())
+
+```
+
+```{r}
+#consider adding
+PlayerBoxScore <- function(name, season, team){
+  ticker = 1
+  name_str = gsub(" ", "-", name)
+  if(!(is.character(name))){
+    print("Please enter a name")
+  }
+  playerBoxCols <- c("Row",
+                     "Gcar",
+                     "GameNum",
+                     "Date",
+                     "Team",
+                     "Venue",
+                     "Opponent",
+                     "TypeGame",
+                     "Score",
+                     "GS",
+                     "MP",
+                     "FG",
+                     "FGA",
+                     "FG%",
+                     "3P",
+                     "3PA",
+                     "3P%",
+                     "2P",
+                     "2PA",
+                     "2P%",
+                     "eFG%",
+                     "FT",
+                     "FTA",
+                     "FT%",
+                     "ORB",
+                     "DRB",
+                     "TRB",
+                     "AST",
+                     "STL",
+                     "BLK",
+                     "TOV",
+                     "PF",
+                     "PTS",
+                     "GmSc")
+
+  cont = TRUE
+  while (cont) {
+    ticker_str = as.character(ticker)
+    year_str = as.character(season)
+    url = paste0("https://www.sports-reference.com/cbb/players/",name_str,"-",ticker,"/gamelog/",season,"/")
+    webpage <- read_html(url)
+    table <- tryCatch(
+      {
+        webpage %>%
+          html_element("tbody") %>%
+          html_table(fill = TRUE)
+      },
+      error = function(e){
+        message("Failed to extract table: ", e$message)
+        NULL
+      }
+
+    )
+    if(is.null(table)){
+      ticker = ticker + 1
+    }
+    else{
+      df_box = as.data.frame(table)
+      print(df_box)
+      names(df_box) = playerBoxCols
+      if (df_box$Team[1] == team){
+        return(df_box)
+        cont = FALSE
+      }
+    }
+    Sys.sleep(1.0)
+    if(ticker >= 6){
+      print("Bad query!")
+      break
+    }
+
+  }
+
+
+}
+
+
+super_sked <- get_super_sked()
+
+
+dateC <- as.integer(date)
+
+d <- Sys.Date()
+today <- paste0(
+  as.integer(format(d, "%m")), "/",
+  as.integer(format(d, "%d")), "/",
+  format(d, "%y")
+)
+
+
+today_sked <- super_sked %>%
+  filter(today == Date)
+print(today_sked)
+```
+
+
+```{r}
+library(rvest)
+library(dplyr)
+library(stringr)
+library(lubridate)
+library(tibble)
+
+scrape_ncaa_game_ids <- function(
+  season_ids,
+  #start_mmdd = "10-10",
+  start_mmdd = "11-11",
+  #end_mmdd   = "03-08",
+  end_mmdd   = "11-18",
+  sleep_sec  = 1
+) {
+
+  season_map <- tibble(
+    season_id = c(18703, 18403, 18221),
+    season = c("2025-26", "2024-25", "2023-24")
+  )
+
+  results <- list()
+
+  for (sid in season_ids) {
+
+    season_label <- season_map %>%
+      filter(season_id == sid) %>%
+      pull(season)
+
+    if (length(season_label) == 0) next
+
+    start_year <- as.integer(substr(season_label, 1, 4))
+    end_year   <- start_year + 1
+
+    dates <- seq.Date(
+      from = as.Date(paste0(start_year, "-", start_mmdd)),
+      #make sure to change back to end_year
+      to   = as.Date(paste0(start_year, "-", end_mmdd)),
+      by   = "day"
+    )
+
+    for (d in dates) {
+
+      # ---- FORCE DATE CLASS + SAFE FORMAT ----
+      d_date  <- as.Date(d, origin = "1970-01-01")
+      date_str <- strftime(d_date, "%m/%d/%Y")
+      date_url <- URLencode(date_str)
+
+      url <- paste0(
+        "https://stats.ncaa.org/season_divisions/",
+        sid,
+        "/livestream_scoreboards?utf8=%E2%9C%93&season_division_id=&game_date=",
+        date_url,
+        "&conference_id="
+      )
+
+      message("Scraping: ", season_label, " | ", date_str)
+
+      page <- tryCatch(read_html(url), error = function(e) NULL)
+      if (is.null(page)) {
+        Sys.sleep(sleep_sec)
+        next
+      }
+
+      game_ids <- page %>%
+        html_elements("tr[id^='contest_']") %>%
+        html_attr("id") %>%
+        str_remove("^contest_")
+
+      if (length(game_ids) > 0) {
+        print(game_ids)
+        results[[length(results) + 1]] <- tibble(
+          date = rep(d_date, length(game_ids)),
+          game_id = as.character(game_ids),
+          season_id = sid,
+          season = season_label
+        )
+      }
+
+      Sys.sleep(sleep_sec)
+    }
+  }
+
+  bind_rows(results)
+}
+
+
+
+#season_ids <- c(18703, 18403, 18221)
+season_ids <- c(18703)
+games_df <- scrape_ncaa_game_ids(
+  season_ids = season_ids,
+  sleep_sec = 1
+)
+
+glimpse(games_df)
+
+```
+
+```{r}
+library(konenMCBB)
+library(usethis)
+
+#season_ids <- c(18703, 18403, 18221)
+season_ids <- c(18221)
+
+ncaa_game_ids_2023_24 <- scrape_ncaa_game_ids(
+  season_ids = season_ids,
+  sleep_sec = 1
+)
+
+# Save into package
+usethis::use_data(
+  ncaa_game_ids_2023_24,
+  overwrite = TRUE,
+  compress = "xz"
+)
+
+```
+
+```{r}
+url <- "https://stats.ncaa.org/contests/6426795/box_score"
+page <- read_html(url)
+
+print(page)
+circles <- page %>%
+  html_element("#court")
+
+circle_data <- circles %>%
+  html_attrs() %>%
+  bind_rows()
+#court
+
+print(circle_data)
+      #play_2858632015
+print(circles)
+```
+```{r}
+library(rvest)
+library(stringr)
+library(dplyr)
+library(purrr)
+
+url <- "https://www.espn.com/mens-college-basketball/scoreboard/_/date/20130213/group/50"
+page <- read_html(url)
+
+game_ids <- page %>%
+  html_elements("a") %>%
+  html_attr("href") %>%
+  na.omit() %>%
+  keep(~ str_detect(.x, "/gameId/")) %>%
+  str_extract("(?<=gameId/)\\d+") %>%
+  unique()
+
+game_ids
+```
+```{r}
+url <- "https://www.ncaa.com/game/6503029/play-by-play"
+page <- read_html(url)
+
+check <- page %>%
+  html_element("body")
+final <- check %>%
+  html_elements("table")
+print(final)
+?html_attr
+#gamecenterAppContent > div > div.play-by-play-period.open > div.play-by-play-period-table > table
+print(page)
+print(check)
+
+
+```
+
+
+
+
+
+```{r}
+# Install the package if you haven't already
+ install.packages("pdftools")
+
+library(pdftools)
+
+# Specify the path to your PDF file
+pdf_file <- "http://fs.ncaa.org/Docs/stats/m_basketball_RB/2024/Attend.pdf"
+
+# Extract text
+text_content <- pdf_text(pdf_file)
+
+# The result is a character vector where each element is a page
+# You can view the first page's text
+cat(text_content[1])
+print(text_content[5])
+
+
+
+```
+```{r}
+
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(tibble)
+
+get_ncaa_pbp <- function(game_id) {
+
+  base_url <- "https://sdataprod.ncaa.com/"
+
+  query_url <- paste0(
+    base_url,
+    "?meta=NCAA_GetGamecenterPbpBasketballById_web",
+    "&extensions={%22persistedQuery%22:{%22version%22:1,",
+    "%22sha256Hash%22:%226b1232714a3598954c5bacabc0f81570e16d6ee017c9a6b93b601a3d40dafb98%22}}",
+    "&variables={%22contestId%22:%22", game_id, "%22,%22staticTestEnv%22:null}"
+  )
+
+  res <- GET(
+    query_url,
+    add_headers(
+      Accept = "application/json",
+      `User-Agent` = "Mozilla/5.0",
+      Referer = paste0("https://www.ncaa.com/game/", game_id, "/play-by-play")
+    )
+  )
+
+  stop_for_status(res)
+
+  txt <- content(res, as = "text", encoding = "UTF-8")
+  j <- fromJSON(txt, flatten = TRUE)
+
+  return(j)
+}
+
+
+```
+
+```{r}
+pbp_to_df <- function(j) {
+
+  j$data$playbyplay$periods %>%
+    as_tibble() %>%
+    select(periodNumber, playbyplayStats) %>%
+    tidyr::unnest(playbyplayStats) %>%
+    select(
+      period = periodNumber,
+      clock,
+      teamId,
+      isHome,
+      homeScore,
+      visitorScore,
+      eventDescription
+    )
+}
+
+
+pbp_raw <- get_ncaa_pbp("6503029")
+
+pbp_df <- pbp_to_df(pbp_raw)
+
+glimpse(pbp_df)
+head(pbp_df, 10)
+
+```
+```{r}
+
+
+
+get_ncaa_boxScore <- function(game_id) {
+
+  base_url <- "https://sdataprod.ncaa.com/"
+
+  query_url <- paste0(base_url,"?meta=NCAA_GetGamecenterBoxscoreBasketballById_web&extensions={%22persistedQuery%22:{%22version%22:1,%22sha256Hash%22:%224a7fa26398db33de3ff51402a90eb5f25acef001cca28d239fe5361315d1419a%22}}&variables={%22contestId%22:%22",game_id,"%22,%22staticTestEnv%22:null}")
+
+  res <- GET(
+    query_url,
+    add_headers(
+      Accept = "application/json",
+      `User-Agent` = "Mozilla/5.0",
+      Referer = paste0("https://www.ncaa.com/game/", game_id, "/boxscore")
+    )
+  )
+
+  stop_for_status(res)
+
+  txt <- content(res, as = "text", encoding = "UTF-8")
+  j <- fromJSON(txt, flatten = TRUE)
+
+  return(j)
+}
+
+
+```
+
+```{r}
+box_to_df <- function(j) {
+
+  j$data$boxscore$teamBoxscore %>%
+    as_tibble() %>%
+    select(teamId, playerStats) %>%
+    tidyr::unnest(playerStats) %>%
+    select(
+          team_id = teamId,
+           number,
+           firstName,
+           lastName,
+           position,
+           minutesPlayed,
+           year,
+           elig,
+           starter,
+           fieldGoalsMade,
+           fieldGoalsAttempted,
+           freeThrowsMade,
+           freeThrowsAttempted,
+           threePointsMade,
+           threePointsAttempted,
+           offensiveRebounds,
+           totalRebounds,
+           assists,
+           turnovers,
+           personalFouls,
+           steals,
+           blockedShots,
+           points
+    )
+}
+
+
+box_raw <- get_ncaa_boxScore("6503029")
+
+box_df <- box_to_df(box_raw)
+
+glimpse(box_df)
+head(box_df, 10)
+```
+```{r}
+check <- get_super_sked()
+dayCast <- function(year = as.integer(format(Sys.Date(), "%Y"))) {
+
+  df <- get_super_sked(year)
+  df$Date <- as.Date(df$Date, format = "%m/%d/%y")
+  slate <- df %>%
+    dplyr::filter(Date == Sys.Date(),
+                  gp == 0)
+
+  if (nrow(slate) == 0) {
+    return("No games scheduled for today.")
+  }
+
+  slate %>%
+    dplyr::transmute(
+      Matchup = matchup,
+      Line = paste0(favored_team, " ", line),
+      Predicted_score = predicted_score,
+      WinProb = pctChanceWin,
+      TTQ = round(ttq, 1),
+    ) %>%
+    dplyr::arrange(desc(TTQ))
+}
+
+
+```
+
+```{r}
+
+espn_summary_save <- function(event_id, path = "espn_raw") {
+
+  dir.create(path, showWarnings = FALSE)
+  
+  base_url <- "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary"
+  
+  response <- GET(
+    url = base_url,
+    query = list(event = event_id)
+  )
+  
+  stop_for_status(response)
+  
+  json_text <- content(response, "text", encoding = "UTF-8")
+  
+  write(
+    json_text,
+    file = file.path(path, paste0(event_id, ".json"))
+  )
+}
+library(httr)
+espn_summary_save("401820724")
+read_espn_summary <- function(event_id, path = "espn_raw") {
+  
+  file_path <- file.path(path, paste0(event_id, ".json"))
+  
+  fromJSON(file_path, simplifyVector = FALSE)
+}
+
+library(jsonlite)
+game <- read_espn_summary("401820724")
+print(game['pickcenter'])
+```
+
+
+```{r}
+library(purrr)
+library(dplyr)
+library(tidyr)
+library(tibble)
+
+espn_team_boxscore <- function(game) {
+  
+  map_dfr(game$boxscore$teams, function(team_obj) {
+    
+    team_info <- team_obj$team
+    
+    # Convert statistics list into named vector
+    stats_vec <- setNames(
+      sapply(team_obj$statistics, function(s) s$displayValue),
+      sapply(team_obj$statistics, function(s) s$name)
+    )
+    
+    tibble(
+      teamId = team_info$id,
+      teamName = team_info$displayName,
+      abbreviation = team_info$abbreviation,
+      homeAway = team_obj$homeAway
+    ) %>%
+      bind_cols(as_tibble_row(stats_vec))
+  })
+}
+team_box_df <- espn_team_boxscore(game)
+print(team_box_df)
+
+```
+```{r}
+espn_player_boxscore <- function(game) {
+  
+  map_dfr(game$boxscore$players, function(team_block) {
+    
+    team_info <- team_block$team
+    stat_block <- team_block$statistics[[1]]
+    
+    stat_keys <- stat_block$keys
+    
+    map_dfr(stat_block$athletes, function(player) {
+      
+      # Skip players with no stats (DNP)
+      if (length(player$stats) == 0) return(NULL)
+      
+      stats_vec <- setNames(player$stats, stat_keys)
+      
+      tibble(
+        teamId = team_info$id,
+        teamName = team_info$displayName,
+        playerId = player$athlete$id,
+        playerName = player$athlete$displayName,
+        jersey = player$athlete$jersey,
+        position = player$athlete$position$abbreviation,
+        starter = player$starter,
+        didNotPlay = player$didNotPlay,
+        ejected = player$ejected
+      ) %>%
+        bind_cols(as_tibble_row(stats_vec))
+    })
+  })
+}
+
+player_box_df <- espn_player_boxscore(game)
+print(player_box_df)
+
+```
+```{r}
+library(purrr)
+library(jsonlite)
+library(dplyr)
+
+espn_pickcenter_df <- function(game) {
+  
+  if (is.null(game$pickcenter)) return(NULL)
+  
+  map_dfr(game$pickcenter, function(p) {
+    
+    tibble(
+      providerId = p$provider$id,
+      providerName = p$provider$name,
+      
+      details = p$details,
+      overUnder = p$overUnder,
+      spread = p$spread,
+      
+      overOdds = p$overOdds,
+      underOdds = p$underOdds,
+      
+      # Away odds
+      awayTeamId = p$awayTeamOdds$teamId,
+      awayMoneyline = p$awayTeamOdds$moneyLine,
+      awaySpreadOdds = p$awayTeamOdds$spreadOdds,
+      awayFavorite = p$awayTeamOdds$favorite,
+      awayFavoriteOpen = p$awayTeamOdds$favoriteAtOpen,
+      
+      # Home odds
+      homeTeamId = p$homeTeamOdds$teamId,
+      homeMoneyline = p$homeTeamOdds$moneyLine,
+      homeSpreadOdds = p$homeTeamOdds$spreadOdds,
+      homeFavorite = p$homeTeamOdds$favorite,
+      homeFavoriteOpen = p$homeTeamOdds$favoriteAtOpen,
+      
+      # Closing moneyline
+      homeMoneylineClose = p$moneyline$home$close$odds,
+      homeMoneylineOpen = p$moneyline$home$open$odds,
+      awayMoneylineClose = p$moneyline$away$close$odds,
+      awayMoneylineOpen = p$moneyline$away$open$odds,
+      
+      # Spread lines
+      homeSpreadClose = p$pointSpread$home$close$line,
+      homeSpreadOpen = p$pointSpread$home$open$line,
+      awaySpreadClose = p$pointSpread$away$close$line,
+      awaySpreadOpen = p$pointSpread$away$open$line,
+      
+      # Total lines
+      totalOverClose = p$total$over$close$line,
+      totalOverOpen = p$total$over$open$line,
+      totalUnderClose = p$total$under$close$line,
+      totalUnderOpen = p$total$under$open$line
+    )
+  })
+}
+pickcenter_df <- espn_pickcenter_df(game)
+print(pickcenter_df)
+```
+
+```{r}
+game <- read_espn_summary("401820724")
+game_info_df <- as.data.frame(game[["gameInfo"]])
+print(game_info_df)
+
+game_info_cols <- c("venue_id",
+                    "venue_guid",
+                    "venueName",
+                    "venueCity",
+                    "venueState",
+                    "grass",
+                    "venueImage",
+                    "imageW",
+                    "imageH",
+                    "imageAlt",
+                    "imageRes",
+                    "imageDay",
+                    "attendance",
+                    "officialName1",
+                    "officialDisplay1",
+                    "officialPos1",
+                    "officialPosDisplay1",  
+                    "official_id1",
+                    "official_order1",
+                    "officialName2",
+                    "officialDisplay2",
+                    "officialPosDisplay2",  
+                    "officialPos",
+                    "official_id2",
+                    "official_order2", 
+                    "officialName3",
+                    "officialDisplay3",
+                    "officialPosDisplay3",                      
+                    "officialPos",
+                    "official_id3",
+                    "official_order3"                
+                    )
+names(game_info_df) <-game_info_cols
+print(game_info_df)
+```
+
+```{r}
+
+win_prob_df <- data.frame(
+  homeWinPercentage = numeric(0),
+  tiePercentage = numeric(0),
+  playId = character(0)
+)
+for (n in game[["winprobability"]]){
+  temp_df <- data.frame(
+  homeWinPercentage = n$homeWinPercentage,
+  tiePercentage = n$tiePercentage,
+  playId = n$playId    
+  )
+  win_prob_df <- rbind(win_prob_df,temp_df)
+}
+print(win_prob_df)
+```
+
+```{r}
+
+
+library(purrr)
+library(dplyr)
+
+espn_pbp_df <- map_dfr(game$plays, function(n) {
+  
+  # Safely extract participant IDs
+  participant_ids <- if (!is.null(n$participants)) {
+    as.character(unlist(lapply(n$participants, function(p) p$athlete$id)))
+  } else {
+    character(0)
+  }
+  
+  # Ensure at least length 2
+  participant_ids <- c(participant_ids, NA, NA)
+  
+  tibble(
+    playId = as.character(n$id),
+    sequenceNumber = as.character(n$sequenceNumber),
+    playTypeId = as.character(n$type$id),
+    playType = as.character(n$type$text),
+    text = as.character(n$text),
+    awayScore = as.numeric(n$awayScore),
+    homeScore = as.numeric(n$homeScore),
+    period = as.numeric(n$period$number),
+    periodDisplay = as.character(n$period$displayValue),
+    clock = as.character(n$clock$displayValue),
+    scoringPlay = as.logical(n$scoringPlay),
+    scoreValue = as.numeric(n$scoreValue),
+    teamId = as.character(n$team$id),
+    wallClock = as.character(n$wallclock),
+    shootingPlay = as.logical(n$shootingPlay),
+    xCoordinate = as.numeric(n$coordinate$x),
+    yCoordinate = as.numeric(n$coordinate$y),
+    pointsAttempted = as.numeric(n$pointsAttempted),
+    shortDescription = as.character(n$shortDescription),
+    
+    participant1Id = participant_ids[1],
+    participant2Id = participant_ids[2]
+  )
+})
+
+espn_pbp_df %>%
+  filter(scoringPlay == TRUE) %>%
+  
+  select(xCoordinate, yCoordinate, text, shortDescription)
+
+shotDistance <- function(x, y){
+  euclidean_dist <- function(p1, p2) {
+  sqrt(sum((p1 - p2)^2))
+  }
+  basket <- c(25,0)
+  shot <- c(x,y)
+  distance <- euclidean_dist(basket, shot)
+  return(distance)
+}
+espn_pbp_df <- espn_pbp_df %>%
+  mutate(
+    shotDistance = ifelse(
+      shootingPlay == TRUE,
+      shotDistance(xCoordinate, yCoordinate),
+      NA_real_
+    )
+  )
+espn_pbp_df <- espn_pbp_df %>%
+  mutate(
+    shotDistance = ifelse(shootingPlay == TRUE, sqrt((xCoordinate - 25)^2 + yCoordinate^2), NA_real_)
+  )
+
+
+espn_pbp_df %>%
+  filter(shootingPlay == TRUE) %>%
+  group_by(teamId) %>%
+  summarise(avg_shotDist = mean(shotDistance, na.rm = TRUE))
+            
+print(espn_pbp_df)
+library(tidyverse)
+ggplot(espn_pbp_df, aes(x = shotDistance)) +
+  geom_histogram(binwidth = 1, color = "white", fill = "skyblue") +
+  facet_wrap(~ teamId)
+
+
+
+```
+
+
+```{r}
+espn_summary_save("401825518")
+
+game <- read_espn_summary("401825518")
+pbp <- get_espn_pbp(game)
+player_box_df <- 
+clock_to_seconds <- function(period, clock_str) {
+  if (is.na(clock_str) || is.na(period)) return(NA_real_)
+  
+  parts <- strsplit(clock_str, ":")[[1]]
+  if (length(parts) != 2) return(NA_real_)
+  
+  minutes <- as.numeric(parts[1])
+  seconds <- as.numeric(parts[2])
+  if (is.na(minutes) || is.na(seconds)) return(NA_real_)
+  
+  remaining <- minutes * 60 + seconds
+  period_length <- 20 * 60  # NCAA: 20 min halves
+  
+  elapsed <- (period - 1) * period_length + (period_length - remaining)
+  return(elapsed)
+}
+
+build_rotation_stints <- function(pbp_df, player_box_df) {
+  
+  cat("\n=== Building Rotation Stints ===\n\n")
+
+  pbp_df <- pbp_df %>%
+    mutate(
+      teamId = as.character(teamId),
+      participant1Id = as.character(participant1Id),
+      gameSeconds = mapply(clock_to_seconds, period, clock)
+    ) %>%
+    filter(!is.na(gameSeconds)) %>%
+    arrange(gameSeconds)
+  
+  player_box_df <- player_box_df %>%
+    mutate(
+      teamId = as.character(teamId),
+      playerId = as.character(playerId)
+    )
+  
+
+  
+  starters <- player_box_df %>%
+    filter(starter == TRUE) %>%
+    select(teamId, playerId)
+  
+  starter_check <- starters %>% count(teamId)
+  if (any(starter_check$n != 5)) {
+    cat("⚠️  Starter counts:\n")
+    print(starter_check)
+    stop("Each team must have exactly 5 starters")
+  }
+  
+  teams <- unique(starters$teamId)
+  cat(sprintf("Teams: %s\n", paste(teams, collapse=", ")))
+  
+
+  
+  cat("\nProcessing substitutions...\n")
+  
+  subs <- pbp_df %>%
+    filter(playTypeId == "584")
+  
+  cat(sprintf("Found %d substitution rows\n", nrow(subs)))
+
+  sub_groups <- subs %>%
+    group_by(teamId, period, clock) %>%
+    summarise(
+      gameSeconds = first(gameSeconds),
+      n_players = n(),
+      players = list(participant1Id[!is.na(participant1Id)]),
+      .groups = "drop"
+    ) %>%
+    arrange(gameSeconds)
+  
+  cat(sprintf("Grouped into %d substitution events\n", nrow(sub_groups)))
+  
+  # Show distribution
+  size_dist <- sub_groups %>% count(n_players)
+  cat("\nSubstitution event sizes:\n")
+  print(size_dist)
+
+  
+  on_floor <- starters %>%
+    group_by(teamId) %>%
+    summarise(players = list(playerId), .groups = "drop") %>%
+    deframe()
+  
+  start_times <- list()
+  for (team in teams) {
+    start_times[[team]] <- setNames(
+      rep(0, length(on_floor[[team]])),
+      on_floor[[team]]
+    )
+  }
+  
+  stints <- list()
+  valid_subs <- 0
+  invalid_subs <- 0
+
+  for (i in seq_len(nrow(sub_groups))) {
+    
+    sub <- sub_groups[i, ]
+    team <- sub$teamId
+    players <- unlist(sub$players)
+    n_players <- length(players)
+    
+    if (is.null(on_floor[[team]])) {
+      invalid_subs <- invalid_subs + 1
+      next
+    }
+    
+    current <- on_floor[[team]]
+    
+    # Separate who's going out vs coming in
+    going_out <- players[players %in% current]
+    coming_in <- players[!players %in% current]
+    
+    # Must have equal numbers going out and coming in
+    # And must be an even total (2, 4, 6, etc.)
+    if (length(going_out) == length(coming_in) && 
+        length(going_out) > 0 && 
+        n_players %% 2 == 0) {
+      
+      valid_subs <- valid_subs + 1
+      
+      # Show first few events
+      if (valid_subs <= 5) {
+        cat(sprintf("  Event #%d (t=%.1f): Team %s - %d player(s) out, %d in\n",
+                    valid_subs, sub$gameSeconds, team, 
+                    length(going_out), length(coming_in)))
+        cat(sprintf("    OUT: %s\n", paste(going_out, collapse=", ")))
+        cat(sprintf("    IN:  %s\n", paste(coming_in, collapse=", ")))
+      }
+      
+      # Record stints for all players going out
+      for (player_out in going_out) {
+        stints[[length(stints) + 1]] <- tibble(
+          teamId = team,
+          playerId = player_out,
+          startTime = start_times[[team]][player_out],
+          endTime = sub$gameSeconds
+        )
+      }
+      
+      # Update floor: remove all going out, add all coming in
+      on_floor[[team]] <- setdiff(current, going_out)
+      on_floor[[team]] <- c(on_floor[[team]], coming_in)
+      
+      # Update start times: remove outgoing, add incoming
+      for (player_out in going_out) {
+        start_times[[team]] <- start_times[[team]][names(start_times[[team]]) != player_out]
+      }
+      for (player_in in coming_in) {
+        start_times[[team]][player_in] <- sub$gameSeconds
+      }
+      
+      # Verify we still have 5 on floor
+      if (length(on_floor[[team]]) != 5) {
+        cat(sprintf("      WARNING: Team %s now has %d players on floor!\n", 
+                    team, length(on_floor[[team]])))
+      }
+      
+    } else {
+      invalid_subs <- invalid_subs + 1
+      if (invalid_subs <= 3) {
+        cat(sprintf("    Event #%d invalid: %d out, %d in (total %d players)\n",
+                    i, length(going_out), length(coming_in), n_players))
+      }
+    }
+  }
+  
+  cat(sprintf("\nProcessed: %d valid, %d invalid substitution events\n", 
+              valid_subs, invalid_subs))
+  
+
+  
+  game_end <- max(pbp_df$gameSeconds, na.rm = TRUE)
+  cat(sprintf("Game duration: %.1f minutes\n", game_end/60))
+  
+  for (team in teams) {
+    for (player in names(start_times[[team]])) {
+      stints[[length(stints) + 1]] <- tibble(
+        teamId = team,
+        playerId = player,
+        startTime = start_times[[team]][player],
+        endTime = game_end
+      )
+    }
+  }
+  
+  
+  result <- bind_rows(stints) %>%
+    mutate(minutes = (endTime - startTime) / 60) %>%
+    arrange(teamId, playerId, startTime)
+  
+  cat(sprintf("\n✓ Generated %d rotation stints\n\n", nrow(result)))
+  
+  return(result)
+}
+
+summarize_player_minutes <- function(rotation_df, player_box_df = NULL) {
+  summary <- rotation_df %>%
+    group_by(teamId, playerId) %>%
+    summarise(
+      stints = n(),
+      totalMinutes = sum(minutes, na.rm = TRUE),
+      avgStintMinutes = mean(minutes, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    arrange(teamId, desc(totalMinutes))
+  
+  if (!is.null(player_box_df)) {
+    player_info <- player_box_df %>%
+      select(playerId, playerName) %>%
+      mutate(playerId = as.character(playerId)) %>%
+      distinct()
+    
+    summary <- summary %>%
+      left_join(player_info, by = "playerId") %>%
+      select(teamId, playerId, playerName, everything())
+  }
+  
+  return(summary)
+}
+
+
+
+rotation_stints <- build_rotation_stints(
+  pbp_df = espn_pbp_df,
+  player_box_df = player_box_df
+)
+
+cat("=== ROTATION STINTS (First 20) ===\n")
+print(head(rotation_stints, 20))
+
+cat("\n=== PLAYER MINUTES SUMMARY ===\n")
+player_minutes <- summarize_player_minutes(rotation_stints, player_box_df)
+print(player_minutes)
+
+# Validation against box score
+if ("minutes" %in% names(player_box_df)) {
+  cat("\n=== VALIDATION vs BOX SCORE ===\n")
+  validation <- player_minutes %>%
+    left_join(
+      player_box_df %>% 
+        select(playerId, boxMinutes = minutes) %>%
+        mutate(
+          playerId = as.character(playerId),
+          boxMinutes = as.numeric(boxMinutes)
+        ),
+      by = "playerId"
+    ) %>%
+    mutate(
+      calculatedMin = round(totalMinutes, 1),
+      difference = round(totalMinutes - boxMinutes, 1),
+      matchesBox = abs(difference) <= 1  # Within 1 minute tolerance
+    ) %>%
+    select(playerName, calculatedMin, boxMinutes, difference, matchesBox) %>%
+    arrange(desc(abs(difference)))
+  
+  print(validation, n = 20)
+  
+  matches <- sum(validation$matchesBox, na.rm = TRUE)
+  total <- nrow(validation)
+  cat(sprintf("\n✓ %d/%d players match box score (±1 min)\n", matches, total))
+}
+```
+```{r}
+konenMCBB:::.espn_process_day(date = "2024-11-12", season = "2024-25")
+konenMCBB:::.espn_process_day(date = "2024-11-13", season = "2024-25")
+konenMCBB:::.espn_process_day(date = "2024-11-14", season = "2024-25")
+espn_rankings_summary(season = "2024-25", date = "2024-11-12")
+espn_rankings_summary(season = "2024-25", date = "2024-11-13")
+espn_rankings_summary(season = "2024-25", date = "2024-11-14")
+getwd()
+```
+
+
+```{r}
+options(konenMCBB.espn_db_path = "data/espn_db")
+library(httr)
+library(jsonlite)
+url <- "https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event=401253881"
+response <- GET(url)
+stop_for_status(response) 
+status_code(response)
+json_text <- content(response, "text", encoding = "UTF-8")
+data_list <- fromJSON(json_text)
+print(data_list)
+```
+
+```{r}
+options(konenMCBB.espn_db_path = "data/espn_db")
+library(konenMCBB)
+
+rank_tbl <- espn_rankings_summary(
+  season = "2024-25",
+  date = "2025-01-20",
+  use_incremental = TRUE,
+  save_state = TRUE
+)
+
+# See all columns
+names(rank_tbl)
+
+# View just those advanced/ranking columns
+rank_tbl[, c(
+  "team_name",
+  "off_eff","def_eff","net_eff","eff",
+  "pace","ftar","fgar","threepar","pct_3pa",
+  "fg_pct","threep_pct","ft_pct","sos_eff",
+  "adj_off_eff","adj_def_eff","adj_net_eff",
+  "avg_shot_distance","pct_close_range","pct_mid_range","pct_three_profile",
+  "shot_attempts","close_range_attempts","mid_range_attempts","three_point_attempts_profile",
+  "rank_win_pct","rank_adj_net","rank_adj_off","rank_adj_def","ranking_score","ranking"
+)] |> head(25)
+rank_tbl <- espn_rankings_summary(
+  season = "2024-25",
+  date = "2025-01-20",
+  base_path = "data/espn_db",
+  use_incremental = FALSE,
+  save_state = TRUE
+)
+print(head(rank_tbl,5))
+espn_process_
+rank_tbl <- espn_rankings_summary(
+  season = "2024-25",
+  date = "2025-01-21",
+  base_path = "data/espn_db",
+  use_incremental = TRUE,
+  save_state = TRUE
+)
+print(`2025-11-16`[['rankings']])
+```
+
+```{r}
+install.packages("BART")
+??BART
+```
+

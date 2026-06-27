@@ -1,0 +1,36 @@
+---
+title: "espnGameidMake"
+output: html_document
+---
+
+```{r}
+library(devtools)
+library(rvest)
+library(dplyr)
+library(stringr)
+library(lubridate)
+library(tibble)
+library(tidyverse)
+load_all()
+espn_game_ids <- espnGameIds()
+
+```
+
+```{r}
+#out_dir <- "data/espn_game_ids"
+#dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+
+```
+
+```{r}
+espn_game_ids %>%
+  group_by(season) %>%
+  group_walk(~ {
+    file_name <- paste0(
+      out_dir, "/espn_game_ids_", gsub("-", "_", .y$season), ".rds"
+    )
+    saveRDS(.x, file_name)
+  })
+
+```
+

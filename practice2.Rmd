@@ -1,0 +1,260 @@
+---
+title: "practice2"
+output: html_document
+---
+
+```{r}
+super_sked <- get_super_sked()
+library(dplyr)
+dumb_df <- super_sked %>%
+  mutate(diff = t1pts - t2pts) %>%
+  group_by(Date) %>%
+  summarise(mean_diff = mean(diff)) %>%
+  select(Date, mean_diff)
+
+print(dumb_df)
+library(xts)
+dumb_df$Date <- as.Date(dumb_df$Date)
+
+
+my_xts_series <- xts(x = dumb_df$mean_diff, order.by = dumb_df$Date)
+print(dumb_df)
+# Print the object
+print(my_xts_series)
+diff_ts <- ts(diff_ts = mean_diff, start = )
+?ts
+```
+
+```{r}
+library(rvest)
+url <- "https://haslametrics.com/ratings.xml?z=0.9422237946990226"
+page <- read_html(url) 
+print(page)
+table <- page %>%
+  html_element("tbody") %>%
+  html_table()
+print(table)
+```
+```{r}
+library(rvest)
+url <- "https://haslametrics.com/ratings.xml?z=0.8267831301598584"
+page <- read_html(url)
+print(page)
+body <- page %>%
+  html_element("tbody")
+#content > script:nth-child(8)
+#teamcast > tbody
+print(body)
+url <- "https://barttorvik.com/all_ncaa.json"
+
+resp <- request(url) %>%
+  req_perform() %>%
+  resp_body_json(simplifyVector = TRUE)
+
+df <- as_tibble(resp)
+```
+```{r}
+# Load the httr package
+library(chromote)
+library(rvest)
+
+
+now_seeding.json
+now_inprob.json
+library(httr)
+set_config(config(ssl_verifypeer = FALSE))
+options(RCurlOptions = list(ssl_verifypeer = FALSE))
+options(rsconnect.check.certificate = FALSE)
+WebScrape <- GET("https://haslametrics.com/ratings.xml?z=0.9422237946990226")
+Data <- as.data.frame(do.call(rbind, lapply(content(WebScrape,"parsed"), as.vector)))
+#https://barttorvik.com/careerstats.json
+```
+
+```{r}
+library(xml2)
+library(dplyr)
+library(tidyr)
+
+# The URL you found in the Network Tab
+xml_url <- "https://haslametrics.com/ratings.xml?z=0.9422237946990226"
+
+# 1. Read the XML data
+xml_data <- read_xml(xml_url)
+
+# 2. Extract the nodes (assuming each team is wrapped in a <team> or <row> tag)
+# Use xml_children to see the structure if you aren't sure
+nodes <- xml_find_all(xml_data, ".//team") # Replace 'team' with the actual tag name in the XML
+
+# 3. Convert to a Data Frame
+# This logic turns the XML tags into columns
+ratings_df <- map_df(nodes, function(x) {
+  as.list(xml_find_all(x, "./*") %>% { setNames(xml_text(.), xml_name(.)) })
+})
+
+head(ratings_df)
+# Try the base URL first
+xml_url <- "https://haslametrics.com/ratings.xml"
+xml_data <- read_xml(xml_url)
+```
+```{r}
+library(httr)
+library(xml2)
+
+xml_url <- "https://haslametrics.com/ratings.xml"
+
+# 1. Manually set a browser-like User-Agent
+response <- GET(xml_url, user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebkit/537.36"))
+
+# 2. Check if the request actually worked
+if (status_code(response) == 200) {
+  xml_data <- read_xml(content(response, "raw"))
+  print("Success!")
+} else {
+  print(paste("Failed with status:", status_code(response)))
+}
+```
+
+```{r}
+library(chromote)
+library(rvest)
+library(dplyr)
+
+# Start browser session
+b <- ChromoteSession$new()
+b$Page$navigate("https://haslametrics.com/ratings.php")
+Sys.sleep(4)  # wait for JS to load
+
+# Pull rendered HTML
+html <- b$Runtime$evaluate("document.documentElement.outerHTML")$result$value
+page <- read_html(html)
+b$close()
+#https://haslametrics.com/projections.csv
+# Find the table (equivalent to your xpath)
+table <- page %>%
+  html_element(xpath = '/html/body/div/table/tbody/tr[5]/td/div[3]/div/div/table')
+
+# Extract by class (equivalent to find_elements by class name)
+scoreproj1 <- table %>%
+  html_elements(".scoreproj1") %>%
+  html_text(trim = TRUE)
+
+scoreproj2 <- table %>%
+  html_elements(".scoreproj2") %>%
+  html_text(trim = TRUE)
+
+# Build data frame
+df <- data.frame(
+  scoreproj1 = scoreproj1,
+  scoreproj2 = scoreproj2
+)
+
+df
+```
+```{r}
+library(curl)
+library(xml2)
+
+url <- "https://haslametrics.com/ratings.xml?z=0.8267831301598584"
+
+# Disable decoding and download raw
+h <- new_handle()
+handle_setopt(h, http_content_decoding = FALSE)
+
+tmp <- tempfile()
+curl_download(url, tmp, handle = h)
+
+raw_bytes <- readBin(tmp, "raw", file.info(tmp)$size)
+
+# Check first few bytes (magic bytes tell us compression type)
+print(raw_bytes[1:10])
+
+# Parse XML (xml2 handles encoding automatically)
+doc <- read_xml(content_raw)
+
+# Explore structure
+xml_name(doc)          # root node name
+xml_children(doc)      # child nodes
+xml_structure(doc) 
+```
+
+```{r}
+check <- get_super_sked()
+duke_check <- check %>%
+  filter(team1 == "Duke") %>%
+  select(t1wp, t1pts, t2pts)
+print(duke_check)
+
+
+time1 <- timeMachine_ratings(20251105)
+time1_duke <- time1 %>%
+  filter(team == "Duke")
+print(time1_duke)
+
+dat <- get_super_sked()
+
+df <- dat %>%
+  mutate(ptDiff = t1pts - t2pts)
+
+
+
+```
+
+```{r}
+library(BAS)
+
+df_clean <- df %>%
+  drop_na(tempo)
+
+
+bas_model <- bas.glm(
+  t1wp ~ t1oe + t2oe + t1de + t2de + tpro + t1propt + t2propt + t1elite + t2elite + t1py + t2py,  
+  data            = df_clean,
+  family          = binomial(),
+  betaprior       = hyper.g.n(),
+  modelprior      = uniform(),
+  method          = "MCMC",
+  MCMC.iterations = 10000
+)
+summary(bas_model)
+
+plot(bas_model)   
+
+
+plot(bas_model, which = 4) 
+
+models <- bas_model$which   
+post_probs <- bas_model$postprobs
+```
+
+```{r}
+# BMA
+pred_bma <- fitted(bas_model, type = "response")
+pred_class <- ifelse(pred_bma > 0.5, 1, 0)
+
+# matrix
+table(Predicted = pred_class, Actual = df_clean$t1wp)
+
+# results
+mean(pred_class == df_clean$t1wp)
+library(pROC)
+
+#AUC
+roc_bma <- roc(df_clean$t1wp, pred_bma)
+auc(roc_bma)
+plot(roc_bma, main = "ROC Curve - BMA model")
+```
+
+```{r}
+library(konenMCBB)
+library(dplyr)
+
+# Current season ratings for all teams
+ratings <- torvik_team_ratings(year = 2025)
+
+# Top 25 by T-Rank power rating (Barthag)
+ratings |>
+  slice_max(barthag, n = 25) |>
+  select(rank, team, conf, adj_oe, adj_de, barthag, wab)
+```
+
+

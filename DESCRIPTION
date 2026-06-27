@@ -1,0 +1,46 @@
+Package: konenMCBB
+Type: Package
+Title: College Basketball Data Digestion for R
+Version: 0.2.0
+Authors@R: c(
+    person(
+      "Charlie", "Konen",
+      email = "konen2332@gmail.com",
+      role = c("aut", "cre")
+    )
+  )
+Description: A unified interface for pulling, parsing, and storing college
+    basketball data from multiple sources: Bart Torvik (barttorvik.com) for
+    advanced team and player efficiency metrics, ESPN for live and historical
+    game data (box scores, play-by-play, betting lines, win probability),
+    Sports Reference for rosters and player game logs, NCAA.com for
+    play-by-play, and Covers.com for injury data. Includes a local flat-file
+    ESPN database pipeline and utilities for loading data into PostgreSQL.
+License: MIT + file LICENSE
+URL: https://github.com/charleskonen1/konenMCBB
+BugReports: https://github.com/charleskonen1/konenMCBB/issues
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.3
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    pkgdown
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Depends:
+    R (>= 4.1.0)
+Imports:
+    dplyr,
+    httr2,
+    jsonlite,
+    purrr,
+    R.utils,
+    rvest,
+    stringr,
+    tibble,
+    tidyr,
+    utils,
+    stats,
+    tools

@@ -1,0 +1,110 @@
+url: ~  # set to https://charleskonen1.github.io/konenMCBB once GitHub Pages is enabled
+
+template:
+  bootstrap: 5
+  bslib:
+    primary: "#1a3a5c"
+    font_scale: 1.0
+
+home:
+  title: "konenMCBB — College Basketball Data for R"
+  description: >
+    Pull, parse, and store college basketball data from Bart Torvik, ESPN,
+    Sports Reference, NCAA.com, and Covers in one R package.
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [github]
+  components:
+    github:
+      icon: fab fa-github
+      href: https://github.com/charleskonen1/konenMCBB
+
+reference:
+  - title: "Bart Torvik — Team Ratings"
+    desc: >
+      T-Rank power ratings, four factors, shooting splits, conference aggregates,
+      and historical snapshots. Start here for team quality analysis.
+    contents:
+      - torvik_team_ratings
+      - torvik_four_factors
+      - torvik_shooting
+      - torvik_conf_stats
+      - timeMachine_ratings
+      - super_sked_with_timemachine
+
+  - title: "Bart Torvik — Schedules & Game Stats"
+    desc: >
+      Game-by-game efficiency, super schedule, and season results.
+    contents:
+      - get_super_sked
+      - get_games
+      - teamBoxScore
+      - dayCast
+      - current_resume
+      - historic_team_results
+
+  - title: "Bart Torvik — Player Stats"
+    desc: >
+      Advanced player efficiency, BPM, and shot location data.
+    contents:
+      - player_stats
+
+  - title: "ESPN — Game Data Pipeline"
+    desc: >
+      Fetch, parse, and store ESPN game data (box scores, play-by-play,
+      win probability, betting lines, on/off rotations) in a local database.
+    contents:
+      - espn_set_db_path
+      - espn_teams
+      - espn_scoreboard
+      - espn_game
+      - espn_process_day
+      - espn_load_game
+      - espn_rankings_summary
+
+  - title: "ESPN — Season Aggregation"
+    desc: >
+      Read and combine a full season of saved ESPN data from the local database
+      into flat tibbles for offline analysis. No network required.
+    contents:
+      - espn_season_box
+      - espn_season_players
+      - espn_team_season_summary
+
+  - title: "Sports Reference"
+    desc: >
+      Player game logs, team rosters, and historical team directory.
+    contents:
+      - PlayerBoxScore
+      - teamRoster
+      - teamList
+
+  - title: "NCAA.com"
+    desc: >
+      Play-by-play and box scores direct from NCAA.com game data API.
+    contents:
+      - ncaa_pbp
+      - ncaa_player_box
+
+  - title: "Injury Data"
+    desc: >
+      Current injury report from Covers.com.
+    contents:
+      - injuryList
+
+  - title: "Package"
+    contents:
+      - konenMCBB
+
+articles:
+  - title: "Getting Started"
+    navbar: ~
+    contents:
+      - konenMCBB
+
+news:
+  releases:
+  - text: "Version 0.2.0"
+    href: news/index.html
