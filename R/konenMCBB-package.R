@@ -1,6 +1,3 @@
-#' @keywords internal
-"_PACKAGE"
-
 #' konenMCBB: College Basketball Data Digestion for R
 #'
 #' @description
@@ -82,6 +79,6 @@
 #' that bulk-loads all local RDS files into a PostgreSQL database using the
 #' schema defined in `schema.sql`. This powers the public stats website.
 #'
-#' @name konenMCBB
-#' @aliases konenMCBB-package
-NULL
+#' @importFrom stats setNames
+#' @keywords internal
+"_PACKAGE"

@@ -102,7 +102,7 @@ articles:
   - title: "Getting Started"
     navbar: ~
     contents:
-      - konenMCBB
+      - getting-started
 
 news:
   releases:

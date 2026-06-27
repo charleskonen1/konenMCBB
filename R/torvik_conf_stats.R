@@ -21,8 +21,8 @@
 #'     \item{mean_barthag}{Average Barthag power rating.}
 #'     \item{mean_adj_tempo}{Average adjusted pace.}
 #'     \item{mean_wab}{Average wins above bubble.}
-#'     \item{mean_o_efg}{Average offensive eFG%.}
-#'     \item{mean_d_efg}{Average defensive eFG% allowed.}
+#'     \item{mean_o_efg}{Average offensive eFG\%.}
+#'     \item{mean_d_efg}{Average defensive eFG\% allowed.}
 #'     \item{mean_o_to_pct}{Average offensive turnover rate.}
 #'     \item{mean_d_to_pct}{Average defensive turnover rate forced.}
 #'     \item{mean_o_reb_pct}{Average offensive rebound rate.}
@@ -38,7 +38,7 @@
 #' This function pulls [torvik_team_ratings()] and [torvik_four_factors()]
 #' internally and joins them on team name. If Torvik's naming is slightly
 #' inconsistent between endpoints for a small number of teams, those teams may
-#' be excluded from the four-factor columns — the raw counts will still be
+#' be excluded from the four-factor columns -- the raw counts will still be
 #' correct.
 #'
 #' @examples
@@ -82,7 +82,7 @@ torvik_conf_stats <- function(
   ff <- tryCatch(
     torvik_four_factors(year = year, timeout = timeout),
     error = function(e) {
-      warning("Failed to fetch four factors — conference stats will be partial: ", conditionMessage(e))
+      warning("Failed to fetch four factors -- conference stats will be partial: ", conditionMessage(e))
       NULL
     }
   )

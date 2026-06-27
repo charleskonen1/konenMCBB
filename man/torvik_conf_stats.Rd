@@ -21,7 +21,28 @@ be included (filters out tiny or non-standard groupings). Default `4`.}
 data functions. Default `20`.}
 }
 \value{
-
+A tibble with one row per conference, containing:
+  \describe{
+    \item{conf}{Conference abbreviation.}
+    \item{n_teams}{Number of teams in the conference.}
+    \item{mean_rank}{Average T-Rank ranking across member teams.}
+    \item{mean_adj_oe}{Average adjusted offensive efficiency.}
+    \item{mean_adj_de}{Average adjusted defensive efficiency.}
+    \item{mean_barthag}{Average Barthag power rating.}
+    \item{mean_adj_tempo}{Average adjusted pace.}
+    \item{mean_wab}{Average wins above bubble.}
+    \item{mean_o_efg}{Average offensive eFG\%.}
+    \item{mean_d_efg}{Average defensive eFG\% allowed.}
+    \item{mean_o_to_pct}{Average offensive turnover rate.}
+    \item{mean_d_to_pct}{Average defensive turnover rate forced.}
+    \item{mean_o_reb_pct}{Average offensive rebound rate.}
+    \item{mean_d_reb_pct}{Average defensive rebound rate.}
+    \item{mean_o_ftr}{Average offensive free throw rate.}
+    \item{mean_d_ftr}{Average defensive free throw rate allowed.}
+    \item{top_team}{Team with the best Barthag in the conference.}
+    \item{top_barthag}{Barthag of the top team.}
+    \item{total_wab}{Sum of WAB across all conference teams.}
+  }
 }
 \description{
 Aggregates Bart Torvik team ratings and four factors up to the conference
@@ -32,7 +53,7 @@ efficiency, power rating, pace, and shooting.
 This function pulls [torvik_team_ratings()] and [torvik_four_factors()]
 internally and joins them on team name. If Torvik's naming is slightly
 inconsistent between endpoints for a small number of teams, those teams may
-be excluded from the four-factor columns — the raw counts will still be
+be excluded from the four-factor columns -- the raw counts will still be
 correct.
 }
 \examples{
