@@ -1,7 +1,7 @@
 Package: konenMCBB
 Type: Package
 Title: College Basketball Data Digestion for R
-Version: 0.2.0
+Version: 0.2.1
 Authors@R: c(
     person(
       "Charlie", "Konen",
