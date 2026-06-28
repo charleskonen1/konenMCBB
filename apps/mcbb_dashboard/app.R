@@ -271,6 +271,96 @@ ui <- page_navbar(
       br(),
       DTOutput("pl_table")
     )
+  ),
+
+  # ── Tab 7: Team Resume ─────────────────────────────────────────────────────
+  nav_panel(
+    title = icon_text("clipboard-list", "Team Resume"),
+    value = "resume",
+    layout_sidebar(
+      sidebar = sidebar(
+        width = 240,
+        selectInput("res_year", "Season", choices = year_choices, selected = default_year),
+        uiOutput("res_team_ui"),
+        selectInput("res_quad", "Quadrant filter",
+                    choices = c("All" = "All", "Quad 1" = "1", "Quad 2" = "2",
+                                "Quad 3" = "3", "Quad 4" = "4")),
+        hr(),
+        actionButton("load_res_teams", "Load Teams", class = "btn-secondary w-100",
+                     icon = icon("download")),
+        br(), br(),
+        actionButton("load_res", "Load Games", class = "btn-primary w-100",
+                     icon = icon("rotate"))
+      ),
+      layout_columns(
+        col_widths = c(3, 3, 3, 3),
+        uiOutput("res_card_w"),
+        uiOutput("res_card_l"),
+        uiOutput("res_card_adjoe"),
+        uiOutput("res_card_adjde")
+      ),
+      br(),
+      plotOutput("res_result_plot", height = "300px"),
+      br(),
+      DTOutput("res_table")
+    )
+  ),
+
+  # ── Tab 8: Super Schedule ─────────────────────────────────────────────────
+  nav_panel(
+    title = icon_text("calendar-week", "Super Schedule"),
+    value = "supersked",
+    layout_sidebar(
+      sidebar = sidebar(
+        width = 240,
+        selectInput("ss_year", "Season", choices = year_choices, selected = default_year),
+        hr(),
+        p("Shows all scheduled games with Torvik's predictions, win probabilities, and game quality scores.",
+          style = "font-size:0.85em; color:#6c757d;"),
+        actionButton("load_ss", "Load / Refresh", class = "btn-primary w-100",
+                     icon = icon("rotate"))
+      ),
+      layout_columns(
+        col_widths = c(6, 6),
+        plotOutput("ss_ttq_plot",  height = "380px"),
+        plotOutput("ss_line_plot", height = "380px")
+      ),
+      br(),
+      DTOutput("ss_table")
+    )
+  ),
+
+  # ── Tab 9: Time Machine ───────────────────────────────────────────────────
+  nav_panel(
+    title = icon_text("clock-rotate-left", "Time Machine"),
+    value = "timemachine",
+    layout_sidebar(
+      sidebar = sidebar(
+        width = 240,
+        dateInput("tm_date", "Snapshot date",
+                  value = Sys.Date() - 1,
+                  min   = as.Date("2014-11-13"),
+                  max   = Sys.Date() - 1),
+        selectInput("tm_conf", "Conference", choices = conf_choices),
+        sliderInput("tm_n", "Show top N teams", min = 10, max = 363, value = 25, step = 5),
+        hr(),
+        p("Loads Torvik's ratings as they stood on the selected date. Useful for historical analysis.",
+          style = "font-size:0.85em; color:#6c757d;"),
+        actionButton("load_tm", "Load Snapshot", class = "btn-primary w-100",
+                     icon = icon("rotate"))
+      ),
+      layout_columns(
+        col_widths = c(3, 3, 3, 3),
+        uiOutput("tm_card_1"),
+        uiOutput("tm_card_2"),
+        uiOutput("tm_card_3"),
+        uiOutput("tm_card_4")
+      ),
+      br(),
+      plotOutput("tm_barthag_plot", height = "420px"),
+      br(),
+      DTOutput("tm_table")
+    )
   )
 )
 
@@ -279,12 +369,16 @@ server <- function(input, output, session) {
 
   # -- Data stores (reactive, loaded on button press) -------------------------
   rv <- reactiveValues(
-    rankings = NULL,
-    conf     = NULL,
-    ff       = NULL,
-    shooting = NULL,
-    today    = NULL,
-    players  = NULL
+    rankings   = NULL,
+    conf       = NULL,
+    ff         = NULL,
+    shooting   = NULL,
+    today      = NULL,
+    players    = NULL,
+    res_teams  = NULL,
+    resume     = NULL,
+    supersked  = NULL,
+    timemachine = NULL
   )
 
   # ── Rankings ──────────────────────────────────────────────────────────────
@@ -709,6 +803,264 @@ server <- function(input, output, session) {
       class    = "stripe hover compact"
     )
   })
+  # ── Team Resume ───────────────────────────────────────────────────────────
+
+  observeEvent(input$load_res_teams, {
+    withProgress(message = "Loading team list...", {
+      d <- tryCatch(
+        torvik_team_ratings(year = as.integer(input$res_year), conf = "All"),
+        error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
+      )
+      rv$res_teams <- d
+    })
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+
+  output$res_team_ui <- renderUI({
+    d <- rv$res_teams
+    if (is.null(d) || nrow(d) == 0) {
+      selectInput("res_team", "Team (load teams first)", choices = character(0))
+    } else {
+      teams <- sort(unique(d$team))
+      selectInput("res_team", "Team", choices = teams, selected = teams[1], selectize = TRUE)
+    }
+  })
+
+  observeEvent(input$load_res, {
+    req(input$res_team)
+    withProgress(message = paste("Loading games for", input$res_team, "..."), {
+      rv$resume <- tryCatch(
+        get_games(
+          team   = input$res_team,
+          season = as.integer(input$res_year),
+          quad   = if (input$res_quad == "All") "All" else as.integer(input$res_quad)
+        ),
+        error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
+      )
+    })
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+
+  res_data <- reactive({
+    d <- rv$resume; req(d, nrow(d) > 0)
+    d
+  })
+
+  output$res_card_w <- renderUI({
+    d <- res_data()
+    w <- sum(grepl("^W", d$Result), na.rm = TRUE)
+    div(class = "metric-card",
+        div(class = "metric-val", style = "color:#27ae60;", w),
+        div(class = "metric-lbl", "Wins"))
+  })
+
+  output$res_card_l <- renderUI({
+    d <- res_data()
+    l <- sum(grepl("^L", d$Result), na.rm = TRUE)
+    div(class = "metric-card",
+        div(class = "metric-val", style = "color:#c0392b;", l),
+        div(class = "metric-lbl", "Losses"))
+  })
+
+  output$res_card_adjoe <- renderUI({
+    d <- res_data()
+    oe_col <- intersect(c("Adj. O", "adj_oe", "AdjOE"), names(d))[1]
+    val <- if (!is.na(oe_col)) round(mean(as.numeric(d[[oe_col]]), na.rm = TRUE), 1) else NA
+    div(class = "metric-card",
+        div(class = "metric-val", if (!is.na(val)) val else "—"),
+        div(class = "metric-lbl", "Avg Adj. OE"))
+  })
+
+  output$res_card_adjde <- renderUI({
+    d <- res_data()
+    de_col <- intersect(c("Adj. D", "adj_de", "AdjDE"), names(d))[1]
+    val <- if (!is.na(de_col)) round(mean(as.numeric(d[[de_col]]), na.rm = TRUE), 1) else NA
+    div(class = "metric-card",
+        div(class = "metric-val", if (!is.na(val)) val else "—"),
+        div(class = "metric-lbl", "Avg Adj. DE"))
+  })
+
+  output$res_result_plot <- renderPlot({
+    d <- res_data()
+    result_col <- intersect(c("Result", "result"), names(d))[1]
+    opp_col    <- intersect(c("Opp", "opponent", "Opponent"), names(d))[1]
+    oe_col     <- intersect(c("Adj. O", "adj_oe", "AdjOE"), names(d))[1]
+    req(!is.na(result_col), !is.na(oe_col))
+    d$wl  <- ifelse(grepl("^W", d[[result_col]]), "W", "L")
+    d$oe  <- as.numeric(d[[oe_col]])
+    d$opp <- if (!is.na(opp_col)) d[[opp_col]] else seq_len(nrow(d))
+    d <- d[!is.na(d$oe), ]
+    ggplot(d, aes(x = reorder(opp, oe), y = oe, fill = wl)) +
+      geom_col(width = 0.7) +
+      scale_fill_manual(values = c("W" = "#27ae60", "L" = "#c0392b"), name = NULL) +
+      coord_flip() +
+      labs(title = paste("Adj. Offensive Efficiency by Game —", input$res_team),
+           x = NULL, y = "Adj. OE") +
+      theme_minimal(base_size = 10) +
+      theme(axis.text.y = element_text(size = 8))
+  })
+
+  output$res_table <- renderDT({
+    d <- res_data()
+    datatable(
+      d,
+      rownames = FALSE,
+      filter   = "top",
+      options  = list(pageLength = 30, dom = "frtip", scrollX = TRUE),
+      class    = "stripe hover compact"
+    )
+  })
+
+  # ── Super Schedule ────────────────────────────────────────────────────────
+
+  observeEvent(input$load_ss, {
+    withProgress(message = "Fetching super schedule (may take ~15 s)...", {
+      rv$supersked <- tryCatch(
+        get_super_sked(year = as.integer(input$ss_year)),
+        error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
+      )
+    })
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+
+  ss_data <- reactive({
+    d <- rv$supersked; req(d, nrow(d) > 0)
+    d
+  })
+
+  output$ss_ttq_plot <- renderPlot({
+    d <- ss_data()
+    ttq_col <- intersect(c("ttq", "TTQ"), names(d))[1]
+    mu_col  <- intersect(c("matchup", "Matchup", "muid"), names(d))[1]
+    req(!is.na(ttq_col))
+    d$ttq_val <- as.numeric(d[[ttq_col]])
+    d$label   <- if (!is.na(mu_col)) d[[mu_col]] else seq_len(nrow(d))
+    top25 <- d[order(-d$ttq_val), ][seq_len(min(25, nrow(d))), ]
+    ggplot(top25, aes(x = reorder(label, ttq_val), y = ttq_val, fill = ttq_val)) +
+      geom_col(width = 0.7) +
+      scale_fill_gradient(low = "#d4e6f1", high = "#1a3a5c", guide = "none") +
+      coord_flip() +
+      labs(title = "Top 25 Games by Game Quality (TTQ)",
+           x = NULL, y = "Torvik Tier Quality") +
+      theme_minimal(base_size = 10) +
+      theme(axis.text.y = element_text(size = 8))
+  })
+
+  output$ss_line_plot <- renderPlot({
+    d <- ss_data()
+    line_col <- intersect(c("line", "Line", "predicted_score"), names(d))[1]
+    wp_col   <- intersect(c("pctChanceWin", "t1wp", "WinProb"), names(d))[1]
+    req(!is.na(line_col), !is.na(wp_col))
+    d$line_val <- as.numeric(d[[line_col]])
+    d$wp_val   <- as.numeric(d[[wp_col]])
+    d2 <- d[!is.na(d$line_val) & !is.na(d$wp_val), ]
+    ggplot(d2, aes(x = line_val, y = wp_val)) +
+      geom_point(alpha = 0.5, size = 1.8, color = "#1a3a5c") +
+      geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+      geom_hline(yintercept = 50, linetype = "dashed", color = "grey50") +
+      labs(title = "Predicted Line vs. Win Probability",
+           x = "Predicted Spread (negative = underdog)",
+           y = "Win Probability (%)") +
+      theme_minimal(base_size = 11)
+  })
+
+  output$ss_table <- renderDT({
+    d <- ss_data()
+    datatable(
+      d,
+      rownames = FALSE,
+      filter   = "top",
+      options  = list(pageLength = 30, dom = "frtip", scrollX = TRUE,
+                      order = list(list(
+                        which(names(d) %in% c("ttq", "TTQ"))[1] - 1L, "desc"
+                      ))),
+      class    = "stripe hover compact"
+    )
+  })
+
+  # ── Time Machine ──────────────────────────────────────────────────────────
+
+  observeEvent(input$load_tm, {
+    date_str <- format(as.Date(input$tm_date), "%Y%m%d")
+    withProgress(message = paste("Loading ratings for", format(as.Date(input$tm_date), "%b %d, %Y"), "..."), {
+      rv$timemachine <- tryCatch(
+        timeMachine_ratings(date = date_str),
+        error = function(e) { showNotification(paste("Error:", e$message), type = "error"); NULL }
+      )
+    })
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+
+  tm_data <- reactive({
+    d <- rv$timemachine; req(d, nrow(d) > 0)
+    conf_sel <- input$tm_conf
+    if (!is.null(conf_sel) && conf_sel != "All") {
+      conf_col <- intersect(c("conf", "Conf"), names(d))[1]
+      if (!is.na(conf_col)) d <- d[d[[conf_col]] == conf_sel, ]
+    }
+    head(d, as.integer(input$tm_n))
+  })
+
+  output$tm_card_1 <- renderUI({
+    d <- rv$timemachine; req(d)
+    team_col <- intersect(c("team", "Team"), names(d))[1]
+    div(class = "metric-card",
+        div(class = "metric-val", if (!is.na(team_col)) d[[team_col]][1] else "—"),
+        div(class = "metric-lbl", paste("#1 on", format(as.Date(input$tm_date), "%b %d, %Y"))))
+  })
+
+  output$tm_card_2 <- renderUI({
+    d <- rv$timemachine; req(d)
+    col <- intersect(c("barthag", "Barthag"), names(d))[1]
+    val <- if (!is.na(col)) sprintf("%.3f", max(as.numeric(d[[col]]), na.rm = TRUE)) else "—"
+    div(class = "metric-card",
+        div(class = "metric-val", val),
+        div(class = "metric-lbl", "Highest Barthag"))
+  })
+
+  output$tm_card_3 <- renderUI({
+    d <- rv$timemachine; req(d)
+    col <- intersect(c("adjoe", "adj_oe", "AdjOE"), names(d))[1]
+    val <- if (!is.na(col)) sprintf("%.1f", max(as.numeric(d[[col]]), na.rm = TRUE)) else "—"
+    div(class = "metric-card",
+        div(class = "metric-val", val),
+        div(class = "metric-lbl", "Best Adj. OE"))
+  })
+
+  output$tm_card_4 <- renderUI({
+    d <- rv$timemachine; req(d)
+    col <- intersect(c("adjde", "adj_de", "AdjDE"), names(d))[1]
+    val <- if (!is.na(col)) sprintf("%.1f", min(as.numeric(d[[col]]), na.rm = TRUE)) else "—"
+    div(class = "metric-card",
+        div(class = "metric-val", val),
+        div(class = "metric-lbl", "Best Adj. DE"))
+  })
+
+  output$tm_barthag_plot <- renderPlot({
+    d <- tm_data()
+    team_col    <- intersect(c("team", "Team"), names(d))[1]
+    barthag_col <- intersect(c("barthag", "Barthag"), names(d))[1]
+    req(!is.na(team_col), !is.na(barthag_col))
+    d$team_lbl  <- d[[team_col]]
+    d$bart_val  <- as.numeric(d[[barthag_col]])
+    d <- d[!is.na(d$bart_val), ]
+    ggplot(d, aes(x = reorder(team_lbl, bart_val), y = bart_val, fill = bart_val)) +
+      geom_col(width = 0.7) +
+      scale_fill_gradient(low = "#cce5ff", high = "#1a3a5c", guide = "none") +
+      coord_flip() +
+      labs(title = paste("Barthag Power Rating —", format(as.Date(input$tm_date), "%b %d, %Y")),
+           x = NULL, y = "Barthag") +
+      theme_minimal(base_size = 10) +
+      theme(axis.text.y = element_text(size = 8))
+  })
+
+  output$tm_table <- renderDT({
+    d <- tm_data()
+    datatable(
+      d,
+      rownames = FALSE,
+      filter   = "top",
+      options  = list(pageLength = 25, dom = "frtip", scrollX = TRUE),
+      class    = "stripe hover compact"
+    )
+  })
+
 }
 
 shinyApp(ui, server)
