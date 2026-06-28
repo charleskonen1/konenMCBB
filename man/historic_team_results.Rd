@@ -7,11 +7,30 @@
 historic_team_results(year = as.integer(format(Sys.Date(), "\%Y")))
 }
 \arguments{
-\item{year}{Season year (must be >= 2008)}
+\item{year}{Integer. Season year (e.g. `2025` for 2024-25). Must be
+`>= 2008`. Defaults to the current calendar year.}
 }
 \value{
-A data.frame of team results
+A data.frame of team results for the requested season.
 }
 \description{
-Retrieves the full team results table for a given season year.
+Retrieves the full team results table for a given season year from
+Bart Torvik. Returns one row per team with season-aggregate metrics.
+}
+\details{
+Data sourced from `barttorvik.com/<year>_team_results.csv`. The file is
+posted for seasons from 2008 onward. A 404 error means the season file
+is not available — typically because the season has not started or the
+data has not been posted to Torvik's server yet.
+}
+\examples{
+\dontrun{
+  res <- historic_team_results(2025)
+  head(res)
+}
+
+}
+\seealso{
+[current_resume()] for the active season, [torvik_team_ratings()]
+  for the efficiency-focused T-Rank table.
 }

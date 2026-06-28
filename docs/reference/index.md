@@ -98,5 +98,6 @@ Current injury report from Covers.com.
 
 ## Package
 
-- [`konenMCBB`](konenMCBB.md) [`konenMCBB-package`](konenMCBB.md) :
-  konenMCBB: College Basketball Data Digestion for R
+- [`konenMCBB`](konenMCBB-package.md)
+  [`konenMCBB-package`](konenMCBB-package.md) : konenMCBB: College
+  Basketball Data Digestion for R

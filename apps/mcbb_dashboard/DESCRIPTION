@@ -1,0 +1,16 @@
+Package: mcbb_dashboard
+Type: Shiny
+Title: MCBB Advanced Stats Dashboard
+Version: 0.0.1
+Depends: R (>= 4.1.0)
+Imports:
+    konenMCBB,
+    shiny,
+    bslib,
+    DT,
+    ggplot2,
+    dplyr,
+    tidyr,
+    scales
+Remotes:
+    charleskonen1/konenMCBB

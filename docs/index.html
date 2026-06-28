@@ -33,8 +33,13 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="articles/konenMCBB.html">Get started</a></li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
+<li><a class="dropdown-item" href="articles/getting-started.html">Getting Started with konenMCBB</a></li>
+  </ul>
+</li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news">
@@ -114,28 +119,28 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/charleskonen1/konenMCBB" class="external-link">konenMCBB</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># --- Torvik T-Rank ratings ---</span></span>
-<span><span class="va">ratings</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_team_ratings%202.html" class="external-link">torvik_team_ratings</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
+<span><span class="va">ratings</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/torvik_team_ratings.html">torvik_team_ratings</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
 <span><span class="va">ratings</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">rank</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">rank</span>, <span class="va">team</span>, <span class="va">adj_oe</span>, <span class="va">adj_de</span>, <span class="va">barthag</span>, <span class="va">wab</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># --- Four factors ---</span></span>
-<span><span class="va">ff</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_four_factors%202.html" class="external-link">torvik_four_factors</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
+<span><span class="va">ff</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/torvik_four_factors.html">torvik_four_factors</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
 <span><span class="va">ff</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="va">d_efg</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">team</span>, <span class="va">conf</span>, <span class="va">o_efg</span>, <span class="va">d_efg</span>, <span class="va">o_to_pct</span>, <span class="va">d_to_pct</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># --- Today's slate ---</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/dayCast%202.html" class="external-link">dayCast</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/dayCast.html">dayCast</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># --- Player advanced stats ---</span></span>
-<span><span class="va">players</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/player_stats%202.html" class="external-link">player_stats</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
+<span><span class="va">players</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/player_stats.html">player_stats</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
 <span><span class="va">players</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">usg</span> <span class="op">&gt;=</span> <span class="fl">20</span>, <span class="va">GP</span> <span class="op">&gt;=</span> <span class="fl">10</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="va">bpm</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">player_name</span>, <span class="va">team</span>, <span class="va">bpm</span>, <span class="va">obpm</span>, <span class="va">dbpm</span>, <span class="va">ORtg</span>, <span class="va">usg</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># --- Historical ratings snapshot (Time Machine) ---</span></span>
-<span><span class="va">snapshot</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/timeMachine_ratings%202.html" class="external-link">timeMachine_ratings</a></span><span class="op">(</span>date <span class="op">=</span> <span class="fl">20250301</span><span class="op">)</span></span>
+<span><span class="va">snapshot</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/timeMachine_ratings.html">timeMachine_ratings</a></span><span class="op">(</span>date <span class="op">=</span> <span class="fl">20250301</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># --- Super schedule with pre-game ratings ---</span></span>
-<span><span class="va">matchups</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/super_sked_with_timemachine%202.html" class="external-link">super_sked_with_timemachine</a></span><span class="op">(</span>date <span class="op">=</span> <span class="fl">20250301</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">matchups</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/super_sked_with_timemachine.html">super_sked_with_timemachine</a></span><span class="op">(</span>date <span class="op">=</span> <span class="fl">20250301</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
@@ -147,8 +152,8 @@
 </h3>
 <p>The main T-Rank table. Every team’s adjusted offensive and defensive efficiency, Barthag power rating, adjusted tempo, WAB, and rankings.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_team_ratings%202.html" class="external-link">torvik_team_ratings</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_team_ratings%202.html" class="external-link">torvik_team_ratings</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span>, conf <span class="op">=</span> <span class="st">"ACC"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/torvik_team_ratings.html">torvik_team_ratings</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/torvik_team_ratings.html">torvik_team_ratings</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span>, conf <span class="op">=</span> <span class="st">"ACC"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Key columns:</strong> <code>rank</code>, <code>team</code>, <code>adj_oe</code>, <code>adj_de</code>, <code>barthag</code>, <code>adj_tempo</code>, <code>wab</code>, <code>sos</code></p>
 <hr>
 </div>
@@ -158,8 +163,8 @@
 </h3>
 <p>The four factors that explain <em>why</em> a team is efficient: shooting (eFG%), ball security (TO%), rebounding (Reb%), and getting to the line (FT Rate) — for both offense and defense.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_four_factors%202.html" class="external-link">torvik_four_factors</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_four_factors%202.html" class="external-link">torvik_four_factors</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span>, conf <span class="op">=</span> <span class="st">"B10"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/torvik_four_factors.html">torvik_four_factors</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/torvik_four_factors.html">torvik_four_factors</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span>, conf <span class="op">=</span> <span class="st">"B10"</span><span class="op">)</span></span></code></pre></div>
 <p><strong>Key columns:</strong> <code>o_efg</code>, <code>d_efg</code>, <code>o_to_pct</code>, <code>d_to_pct</code>, <code>o_reb_pct</code>, <code>d_reb_pct</code>, <code>o_ftr</code>, <code>d_ftr</code></p>
 <hr>
 </div>
@@ -169,7 +174,7 @@
 </h3>
 <p>Point-in-time ratings for any date back to 2014. What did teams look like on the day they played? Essential for retroactive analysis.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/timeMachine_ratings%202.html" class="external-link">timeMachine_ratings</a></span><span class="op">(</span>date <span class="op">=</span> <span class="fl">20250115</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/timeMachine_ratings.html">timeMachine_ratings</a></span><span class="op">(</span>date <span class="op">=</span> <span class="fl">20250115</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level3">
@@ -178,7 +183,7 @@
 </h3>
 <p>Joins that day’s schedule with the pre-game Torvik Time Machine ratings for each team. One row per team per game — perfect for matchup modeling.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">matchups</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/super_sked_with_timemachine%202.html" class="external-link">super_sked_with_timemachine</a></span><span class="op">(</span>date <span class="op">=</span> <span class="fl">20250301</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">matchups</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/super_sked_with_timemachine.html">super_sked_with_timemachine</a></span><span class="op">(</span>date <span class="op">=</span> <span class="fl">20250301</span><span class="op">)</span></span>
 <span><span class="co"># columns: team, opponent, team_barthag, opp_barthag, team_adjoe, opp_adjde, ...</span></span></code></pre></div>
 <hr>
 </div>
@@ -195,8 +200,8 @@
 </h3>
 <p>Game-by-game four-factor efficiency per team. Filter by quadrant (1–4) to isolate quality wins/losses.</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/get_games%202.html" class="external-link">get_games</a></span><span class="op">(</span>team <span class="op">=</span> <span class="st">"Duke"</span>, season <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/get_games%202.html" class="external-link">get_games</a></span><span class="op">(</span>quad <span class="op">=</span> <span class="fl">1</span>, season <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span>  <span class="co"># all Q1 games</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/get_games.html">get_games</a></span><span class="op">(</span>team <span class="op">=</span> <span class="st">"Duke"</span>, season <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/get_games.html">get_games</a></span><span class="op">(</span>quad <span class="op">=</span> <span class="fl">1</span>, season <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span>  <span class="co"># all Q1 games</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level3">
@@ -205,7 +210,7 @@
 </h3>
 <p>Full Bart Torvik player table: ORtg, usage, BPM, shot location (rim/mid/3pt%), and more for every D1 player.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/player_stats%202.html" class="external-link">player_stats</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/player_stats.html">player_stats</a></span><span class="op">(</span>year <span class="op">=</span> <span class="fl">2026</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">usg</span> <span class="op">&gt;=</span> <span class="fl">25</span>, <span class="va">GP</span> <span class="op">&gt;=</span> <span class="fl">15</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="va">obpm</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <hr>
@@ -216,7 +221,7 @@
 </h3>
 <p>Today’s unplayed games sorted by game quality (TTQ), with lines and win probabilities.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/dayCast%202.html" class="external-link">dayCast</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># prints today's slate</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/dayCast.html">dayCast</a></span><span class="op">(</span><span class="op">)</span>  <span class="co"># prints today's slate</span></span></code></pre></div>
 <hr>
 </div>
 </div>
@@ -225,7 +230,7 @@
 </h2>
 <p>The ESPN pipeline fetches live game data and stores it in a structured local database. Set the database path once per session:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/espn_set_db_path%202.html" class="external-link">espn_set_db_path</a></span><span class="op">(</span><span class="st">"~/data/espn_db"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/espn_set_db_path.html">espn_set_db_path</a></span><span class="op">(</span><span class="st">"~/data/espn_db"</span><span class="op">)</span></span>
 <span><span class="co"># or in .Rprofile:</span></span>
 <span><span class="co"># options(konenMCBB.espn_db_path = "~/data/espn_db")</span></span></code></pre></div>
 <div class="section level3">
@@ -251,12 +256,12 @@
 </h3>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Fetch all D1 games on a specific date</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/espn_process_day%202.html" class="external-link">espn_process_day</a></span><span class="op">(</span><span class="st">"2024-11-11"</span>, season <span class="op">=</span> <span class="st">"2024-25"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/espn_process_day.html">espn_process_day</a></span><span class="op">(</span><span class="st">"2024-11-11"</span>, season <span class="op">=</span> <span class="st">"2024-25"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Loop a date range</span></span>
 <span><span class="va">dates</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2024-11-11"</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/as.Date.html" class="external-link">as.Date</a></span><span class="op">(</span><span class="st">"2024-12-31"</span><span class="op">)</span>, by <span class="op">=</span> <span class="st">"day"</span><span class="op">)</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">d</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="va">dates</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/espn_process_day%202.html" class="external-link">espn_process_day</a></span><span class="op">(</span><span class="va">d</span>, season <span class="op">=</span> <span class="st">"2024-25"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="reference/espn_process_day.html">espn_process_day</a></span><span class="op">(</span><span class="va">d</span>, season <span class="op">=</span> <span class="st">"2024-25"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -264,16 +269,16 @@
 </h3>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Fetch a single game live (no save)</span></span>
-<span><span class="va">game</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/espn_game%202.html" class="external-link">espn_game</a></span><span class="op">(</span><span class="st">"401700444"</span><span class="op">)</span></span>
+<span><span class="va">game</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/espn_game.html">espn_game</a></span><span class="op">(</span><span class="st">"401700444"</span><span class="op">)</span></span>
 <span><span class="va">game</span><span class="op">$</span><span class="va">box_team_stats</span></span>
 <span><span class="va">game</span><span class="op">$</span><span class="va">plays</span></span>
 <span><span class="va">game</span><span class="op">$</span><span class="va">winprobability</span></span>
 <span></span>
 <span><span class="co"># Load from local DB (offline, fast)</span></span>
-<span><span class="va">game</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/espn_load_game%202.html" class="external-link">espn_load_game</a></span><span class="op">(</span><span class="st">"401700444"</span>, season <span class="op">=</span> <span class="st">"2024-25"</span>, date <span class="op">=</span> <span class="st">"2024-11-11"</span><span class="op">)</span></span>
+<span><span class="va">game</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/espn_load_game.html">espn_load_game</a></span><span class="op">(</span><span class="st">"401700444"</span>, season <span class="op">=</span> <span class="st">"2024-25"</span>, date <span class="op">=</span> <span class="st">"2024-11-11"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Build team rankings from everything in the DB</span></span>
-<span><span class="va">rankings</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/espn_rankings_summary%202.html" class="external-link">espn_rankings_summary</a></span><span class="op">(</span>season <span class="op">=</span> <span class="st">"2024-25"</span>, date <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">rankings</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/espn_rankings_summary.html">espn_rankings_summary</a></span><span class="op">(</span>season <span class="op">=</span> <span class="st">"2024-25"</span>, date <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="whats-in-a-game-object">What’s in a game object<a class="anchor" aria-label="anchor" href="#whats-in-a-game-object"></a>
@@ -356,13 +361,13 @@
 </h2>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Player game log (e.g. for a player's season)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/PlayerBoxScore%202.html" class="external-link">PlayerBoxScore</a></span><span class="op">(</span>name <span class="op">=</span> <span class="st">"Cooper Flagg"</span>, season <span class="op">=</span> <span class="fl">2025</span>, team <span class="op">=</span> <span class="st">"Duke"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/PlayerBoxScore.html">PlayerBoxScore</a></span><span class="op">(</span>name <span class="op">=</span> <span class="st">"Cooper Flagg"</span>, season <span class="op">=</span> <span class="fl">2025</span>, team <span class="op">=</span> <span class="st">"Duke"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Team roster</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/teamRoster%202.html" class="external-link">teamRoster</a></span><span class="op">(</span>team <span class="op">=</span> <span class="st">"Duke"</span>, season <span class="op">=</span> <span class="fl">2025</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/teamRoster.html">teamRoster</a></span><span class="op">(</span>team <span class="op">=</span> <span class="st">"Duke"</span>, season <span class="op">=</span> <span class="fl">2025</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># All historical teams</span></span>
-<span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/teamList%202.html" class="external-link">teamList</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/teamList.html">teamList</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <blockquote>
 <p><strong>Note:</strong> Sports Reference rate-limits scrapers. Add delays if calling in a loop.</p>
 </blockquote>
@@ -373,10 +378,10 @@
 </h2>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Play-by-play (uses NCAA.com contest ID)</span></span>
-<span><span class="va">pbp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/ncaa_pbp%202.html" class="external-link">ncaa_pbp</a></span><span class="op">(</span><span class="st">"6262407"</span><span class="op">)</span></span>
+<span><span class="va">pbp</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/ncaa_pbp.html">ncaa_pbp</a></span><span class="op">(</span><span class="st">"6262407"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Player box score</span></span>
-<span><span class="va">box</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/ncaa_player_box%202.html" class="external-link">ncaa_player_box</a></span><span class="op">(</span><span class="st">"6262407"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">box</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/ncaa_player_box.html">ncaa_player_box</a></span><span class="op">(</span><span class="st">"6262407"</span><span class="op">)</span></span></code></pre></div>
 <p>NCAA contest IDs differ from ESPN game IDs. They’re found in NCAA.com game URLs.</p>
 <hr>
 </div>
@@ -384,7 +389,7 @@
 <h2 id="injury-data">Injury Data<a class="anchor" aria-label="anchor" href="#injury-data"></a>
 </h2>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">injuries</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/injuryList%202.html" class="external-link">injuryList</a></span><span class="op">(</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">injuries</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/injuryList.html">injuryList</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">injuries</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">Status</span> <span class="op">==</span> <span class="st">"Out"</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
@@ -404,112 +409,112 @@
 </tr></thead>
 <tbody>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_team_ratings%202.html" class="external-link">torvik_team_ratings()</a></code></td>
+<td><code><a href="reference/torvik_team_ratings.html">torvik_team_ratings()</a></code></td>
 <td>Torvik</td>
 <td>T-Rank table</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_four_factors%202.html" class="external-link">torvik_four_factors()</a></code></td>
+<td><code><a href="reference/torvik_four_factors.html">torvik_four_factors()</a></code></td>
 <td>Torvik</td>
 <td>Four factors table</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/timeMachine_ratings%202.html" class="external-link">timeMachine_ratings()</a></code></td>
+<td><code><a href="reference/timeMachine_ratings.html">timeMachine_ratings()</a></code></td>
 <td>Torvik</td>
 <td>Point-in-time ratings</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/super_sked_with_timemachine%202.html" class="external-link">super_sked_with_timemachine()</a></code></td>
+<td><code><a href="reference/super_sked_with_timemachine.html">super_sked_with_timemachine()</a></code></td>
 <td>Torvik</td>
 <td>Schedule + pre-game ratings</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/get_super_sked%202.html" class="external-link">get_super_sked()</a></code></td>
+<td><code><a href="reference/get_super_sked.html">get_super_sked()</a></code></td>
 <td>Torvik</td>
 <td>Full schedule with predictions</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/get_games%202.html" class="external-link">get_games()</a></code></td>
+<td><code><a href="reference/get_games.html">get_games()</a></code></td>
 <td>Torvik</td>
 <td>Game-by-game efficiency</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/teamBoxScore%202.html" class="external-link">teamBoxScore()</a></code></td>
+<td><code><a href="reference/teamBoxScore.html">teamBoxScore()</a></code></td>
 <td>Torvik</td>
 <td>Team box score log</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/player_stats%202.html" class="external-link">player_stats()</a></code></td>
+<td><code><a href="reference/player_stats.html">player_stats()</a></code></td>
 <td>Torvik</td>
 <td>Player advanced stats</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/current_resume%202.html" class="external-link">current_resume()</a></code></td>
+<td><code><a href="reference/current_resume.html">current_resume()</a></code></td>
 <td>Torvik</td>
 <td>Current season team metrics</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/historic_team_results%202.html" class="external-link">historic_team_results()</a></code></td>
+<td><code><a href="reference/historic_team_results.html">historic_team_results()</a></code></td>
 <td>Torvik</td>
 <td>Season team results CSV</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/dayCast%202.html" class="external-link">dayCast()</a></code></td>
+<td><code><a href="reference/dayCast.html">dayCast()</a></code></td>
 <td>Torvik</td>
 <td>Today’s slate</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/espn_set_db_path%202.html" class="external-link">espn_set_db_path()</a></code></td>
+<td><code><a href="reference/espn_set_db_path.html">espn_set_db_path()</a></code></td>
 <td>ESPN</td>
 <td>Configure DB path</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/espn_game%202.html" class="external-link">espn_game()</a></code></td>
+<td><code><a href="reference/espn_game.html">espn_game()</a></code></td>
 <td>ESPN</td>
 <td>Fetch + parse single game</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/espn_process_day%202.html" class="external-link">espn_process_day()</a></code></td>
+<td><code><a href="reference/espn_process_day.html">espn_process_day()</a></code></td>
 <td>ESPN</td>
 <td>Fetch + save all games for a date</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/espn_load_game%202.html" class="external-link">espn_load_game()</a></code></td>
+<td><code><a href="reference/espn_load_game.html">espn_load_game()</a></code></td>
 <td>ESPN</td>
 <td>Load from local DB</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/espn_rankings_summary%202.html" class="external-link">espn_rankings_summary()</a></code></td>
+<td><code><a href="reference/espn_rankings_summary.html">espn_rankings_summary()</a></code></td>
 <td>ESPN</td>
 <td>Build team rankings</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/PlayerBoxScore%202.html" class="external-link">PlayerBoxScore()</a></code></td>
+<td><code><a href="reference/PlayerBoxScore.html">PlayerBoxScore()</a></code></td>
 <td>Sports Ref</td>
 <td>Player game log</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/teamRoster%202.html" class="external-link">teamRoster()</a></code></td>
+<td><code><a href="reference/teamRoster.html">teamRoster()</a></code></td>
 <td>Sports Ref</td>
 <td>Team roster</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/teamList%202.html" class="external-link">teamList()</a></code></td>
+<td><code><a href="reference/teamList.html">teamList()</a></code></td>
 <td>Sports Ref</td>
 <td>Team directory</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/ncaa_pbp%202.html" class="external-link">ncaa_pbp()</a></code></td>
+<td><code><a href="reference/ncaa_pbp.html">ncaa_pbp()</a></code></td>
 <td>NCAA</td>
 <td>Play-by-play</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/ncaa_player_box%202.html" class="external-link">ncaa_player_box()</a></code></td>
+<td><code><a href="reference/ncaa_player_box.html">ncaa_player_box()</a></code></td>
 <td>NCAA</td>
 <td>Player box score</td>
 </tr>
 <tr>
-<td><code><a href="https://rdrr.io/pkg/konenMCBB/man/injuryList%202.html" class="external-link">injuryList()</a></code></td>
+<td><code><a href="reference/injuryList.html">injuryList()</a></code></td>
 <td>Covers</td>
 <td>Injury report</td>
 </tr>

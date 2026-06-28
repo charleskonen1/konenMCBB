@@ -2,4 +2,4 @@
 
 ### Getting Started
 
-- [Getting Started with konenMCBB](konenMCBB.md):
+- [Getting Started with konenMCBB](getting-started.md):

@@ -19,8 +19,11 @@ efficiency, power rating, pace, and shooting."></head><body>
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/konenMCBB.html">Get started</a></li>
-<li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+      <ul class="navbar-nav me-auto"><li class="active nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Getting Started with konenMCBB</a></li>
+  </ul></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-news" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">News</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-news"><li><h6 class="dropdown-header" data-toc-skip>Releases</h6></li>
@@ -50,7 +53,7 @@ efficiency, power rating, pace, and shooting.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_conf_stats%202.html" class="external-link">torvik_conf_stats</a></span><span class="op">(</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">torvik_conf_stats</span><span class="op">(</span></span>
 <span>  year <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.time.html" class="external-link">Sys.Date</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"%Y"</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  min_teams <span class="op">=</span> <span class="fl">4L</span>,</span>
 <span>  timeout <span class="op">=</span> <span class="fl">20</span></span>
@@ -78,16 +81,71 @@ data functions. Default `20`.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
+    <p>A tibble with one row per conference, containing:</p><dl><dt>conf</dt>
+<dd><p>Conference abbreviation.</p></dd>
+
+    <dt>n_teams</dt>
+<dd><p>Number of teams in the conference.</p></dd>
+
+    <dt>mean_rank</dt>
+<dd><p>Average T-Rank ranking across member teams.</p></dd>
+
+    <dt>mean_adj_oe</dt>
+<dd><p>Average adjusted offensive efficiency.</p></dd>
+
+    <dt>mean_adj_de</dt>
+<dd><p>Average adjusted defensive efficiency.</p></dd>
+
+    <dt>mean_barthag</dt>
+<dd><p>Average Barthag power rating.</p></dd>
+
+    <dt>mean_adj_tempo</dt>
+<dd><p>Average adjusted pace.</p></dd>
+
+    <dt>mean_wab</dt>
+<dd><p>Average wins above bubble.</p></dd>
+
+    <dt>mean_o_efg</dt>
+<dd><p>Average offensive eFG%.</p></dd>
+
+    <dt>mean_d_efg</dt>
+<dd><p>Average defensive eFG% allowed.</p></dd>
+
+    <dt>mean_o_to_pct</dt>
+<dd><p>Average offensive turnover rate.</p></dd>
+
+    <dt>mean_d_to_pct</dt>
+<dd><p>Average defensive turnover rate forced.</p></dd>
+
+    <dt>mean_o_reb_pct</dt>
+<dd><p>Average offensive rebound rate.</p></dd>
+
+    <dt>mean_d_reb_pct</dt>
+<dd><p>Average defensive rebound rate.</p></dd>
+
+    <dt>mean_o_ftr</dt>
+<dd><p>Average offensive free throw rate.</p></dd>
+
+    <dt>mean_d_ftr</dt>
+<dd><p>Average defensive free throw rate allowed.</p></dd>
+
+    <dt>top_team</dt>
+<dd><p>Team with the best Barthag in the conference.</p></dd>
+
+    <dt>top_barthag</dt>
+<dd><p>Barthag of the top team.</p></dd>
+
+    <dt>total_wab</dt>
+<dd><p>Sum of WAB across all conference teams.</p></dd>
 
 
-
-    </div>
+</dl></div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>This function pulls [torvik_team_ratings()] and [torvik_four_factors()]
 internally and joins them on team name. If Torvik's naming is slightly
 inconsistent between endpoints for a small number of teams, those teams may
-be excluded from the four-factor columns — the raw counts will still be
+be excluded from the four-factor columns – the raw counts will still be
 correct.</p>
     </div>
     <div class="section level2">
@@ -99,7 +157,7 @@ correct.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span>  <span class="va">conf</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/pkg/konenMCBB/man/torvik_conf_stats%202.html" class="external-link">torvik_conf_stats</a></span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">conf</span> <span class="op">&lt;-</span> <span class="fu">torvik_conf_stats</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Best offensive conferences</span></span></span>
 <span class="r-in"><span>  <span class="va">conf</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/arrange.html" class="external-link">arrange</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/desc.html" class="external-link">desc</a></span><span class="op">(</span><span class="va">mean_adj_oe</span><span class="op">)</span><span class="op">)</span></span></span>
