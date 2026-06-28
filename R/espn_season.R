@@ -6,6 +6,32 @@
 # needing Postgres.
 # =============================================================================
 
+# Coerce box-score stat columns that ESPN sometimes returns as character so
+# that bind_rows across many games doesn't fail on type conflicts (e.g. one
+# game has `points` <chr> and another <dbl>).
+.espn_coerce_box_numeric <- function(df) {
+  num_cols <- intersect(
+    c(
+      "points",
+      "field_goals_made", "field_goals_attempted",
+      "three_point_field_goals_made", "three_point_field_goals_attempted",
+      "free_throws_made", "free_throws_attempted",
+      "rebounds", "totalRebounds",
+      "offensiveRebounds", "offensive_rebounds",
+      "defensiveRebounds", "defensive_rebounds",
+      "assists", "steals", "blocks", "turnovers",
+      "teamTurnovers", "totalTurnovers",
+      "fouls", "technicalFouls", "flagrantFouls",
+      "fastBreakPoints", "pointsInPaint", "turnoverPoints", "largestLead",
+      "minutes_numeric", "estimated_possessions",
+      "points_per_estimated_possession", "plus_minus"
+    ),
+    names(df)
+  )
+  for (nm in num_cols) df[[nm]] <- suppressWarnings(as.numeric(df[[nm]]))
+  df
+}
+
 
 #' Load all team box scores for a season from the local ESPN database
 #'
@@ -102,6 +128,7 @@ espn_season_box <- function(
       if (!file.exists(path)) return(tibble::tibble())
       df <- tryCatch(readRDS(path), error = function(e) NULL)
       if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+      df <- .espn_coerce_box_numeric(df)
       df$season    <- season
       df$game_date <- day_date
       df$game_id   <- basename(gd)
@@ -219,6 +246,7 @@ espn_season_players <- function(
       if (!file.exists(path)) return(tibble::tibble())
       df <- tryCatch(readRDS(path), error = function(e) NULL)
       if (is.null(df) || nrow(df) == 0) return(tibble::tibble())
+      df <- .espn_coerce_box_numeric(df)
       df$season    <- season
       df$game_date <- day_date
       df$game_id   <- basename(gd)
@@ -273,7 +301,9 @@ espn_team_season_summary <- function(
     min_games = 5L
 ) {
 
-  box <- espn_season_box(season, base_path = base_path)
+  # Use espn_team_games(): it adds points_allowed, margin, and won (which a
+  # plain box-score load does not) and coerces stat columns to numeric.
+  box <- espn_team_games(season, base_path = base_path)
   if (nrow(box) == 0) return(tibble::tibble())
 
   safe_num <- function(x) suppressWarnings(as.numeric(x))
@@ -284,6 +314,20 @@ espn_team_season_summary <- function(
       safe_num
     )
   )
+
+  # espn_team_games() returns ESPN's camelCase rebound names; normalise to the
+  # snake_case names this summary expects.
+  rename_map <- c(
+    rebounds          = "totalRebounds",
+    offensive_rebounds = "offensiveRebounds",
+    defensive_rebounds = "defensiveRebounds"
+  )
+  for (new_nm in names(rename_map)) {
+    old_nm <- rename_map[[new_nm]]
+    if (!new_nm %in% names(box) && old_nm %in% names(box)) {
+      box[[new_nm]] <- box[[old_nm]]
+    }
+  }
 
   summary_tbl <- box |>
     dplyr::group_by(.data$team_id) |>

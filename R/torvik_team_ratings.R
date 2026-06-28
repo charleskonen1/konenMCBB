@@ -72,26 +72,26 @@ torvik_team_ratings <- function(
 
   year_str <- as.character(as.integer(year))
 
-  # Build query parameters
-  conf_q <- if (identical(conf, "All")) "" else paste0("&conlimit=", utils::URLencode(conf, reserved = TRUE))
-  url <- paste0("https://barttorvik.com/trank.php?json=1&year=", year_str, conf_q)
+  # The live trank.php endpoint is behind a Cloudflare JS challenge that
+  # blocks non-browser clients. The static `<year>_team_results.csv` file
+  # carries the identical 45-column T-Rank table and is not gated, so we
+  # read that instead.
+  url <- paste0("https://barttorvik.com/", year_str, "_team_results.csv")
 
   req  <- .torvik_req(url, timeout,
                       referer = paste0("https://barttorvik.com/?year=", year_str))
   resp <- .torvik_perform(req, year_str)
   txt  <- httr2::resp_body_string(resp)
-  .torvik_check_html(txt, format = "JSON")
+  .torvik_check_html(txt, format = "CSV")
 
-  raw <- jsonlite::fromJSON(txt, simplifyVector = TRUE)
+  df <- tryCatch(
+    utils::read.csv(text = txt, stringsAsFactors = FALSE, check.names = FALSE),
+    error = function(e) stop("Failed to parse team results CSV: ", conditionMessage(e))
+  )
 
-  # trank.php returns an array-of-arrays; each inner array is one team row
-  if (is.list(raw) && !is.data.frame(raw)) {
-    raw <- do.call(rbind, lapply(raw, function(x) {
-      if (is.list(x)) unlist(x, use.names = FALSE) else x
-    }))
+  if (nrow(df) == 0) {
+    stop("No team ratings returned from barttorvik.com for year=", year_str, ".")
   }
-
-  df <- as.data.frame(raw, stringsAsFactors = FALSE, check.names = FALSE)
 
   # Expected column order from barttorvik T-Rank JSON
   col_names <- c(

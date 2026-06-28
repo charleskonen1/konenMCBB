@@ -101,8 +101,10 @@ super_sked_with_timemachine <- function(date) {
     )
   }
 
-  # Long form: one row per team per game
-  long <- games |>
+  # Long form: one row per team per game. Build each side explicitly — a
+  # pivot_longer here would consume team1/team2 and make the opponent lookup
+  # impossible.
+  g <- games |>
     dplyr::transmute(
       game_date = .data$Date,
       muid      = .data$muid,
@@ -110,39 +112,27 @@ super_sked_with_timemachine <- function(date) {
       team2     = .data$team2,
       t1pts     = as.integer(.data$t1pts),
       t2pts     = as.integer(.data$t2pts)
-    ) |>
-    tidyr::pivot_longer(
-      cols = c("team1", "team2"),
-      names_to = "side",
-      values_to = "team"
-    ) |>
-    dplyr::mutate(
-      opponent = dplyr::if_else(.data$side == "team1", .data$team2, .data$team1),
-      team_pts = dplyr::if_else(.data$side == "team1", .data$t1pts, .data$t2pts),
-      opp_pts  = dplyr::if_else(.data$side == "team1", .data$t2pts, .data$t1pts)
-    ) |>
-    dplyr::select(.data$game_date, .data$muid, .data$team, .data$opponent, .data$team_pts, .data$opp_pts)
-
-  # Join team and opponent Time Machine ratings
-  out <- long |>
-    dplyr::left_join(
-      tm_sel,
-      by = c("team" = "team"),
-      suffix = c("", "_tm")
-    ) |>
-    dplyr::rename_with(
-      ~ paste0("team_", .x),
-      c("conf", "adjoe", "adjde", "barthag", "proj_W", "proj_L", "fun", "WAB")
-    ) |>
-    dplyr::left_join(
-      tm_sel,
-      by = c("opponent" = "team"),
-      suffix = c("", "_opp")
-    ) |>
-    dplyr::rename_with(
-      ~ paste0("opp_", sub("_opp$", "", .x)),
-      dplyr::ends_with("_opp")
     )
+
+  side1 <- g |>
+    dplyr::transmute(game_date, muid, team = team1, opponent = team2,
+                     team_pts = t1pts, opp_pts = t2pts)
+  side2 <- g |>
+    dplyr::transmute(game_date, muid, team = team2, opponent = team1,
+                     team_pts = t2pts, opp_pts = t1pts)
+  long <- dplyr::bind_rows(side1, side2)
+
+  # Build team-prefixed and opponent-prefixed rating tables, then join both.
+  team_ratings <- tm_sel
+  metric_cols  <- setdiff(names(team_ratings), "team")
+  names(team_ratings)[match(metric_cols, names(team_ratings))] <- paste0("team_", metric_cols)
+
+  opp_ratings <- tm_sel
+  names(opp_ratings) <- paste0("opp_", names(opp_ratings))  # incl. opp_team key
+
+  out <- long |>
+    dplyr::left_join(team_ratings, by = "team") |>
+    dplyr::left_join(opp_ratings, by = c("opponent" = "opp_team"))
 
   out
 }

@@ -220,12 +220,12 @@ ui <- page_navbar(
         hr(),
         actionButton("load_sh", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      div(class = "section-hdr", "Shot Zone Distribution (avg % of FGA by zone)"),
+      div(class = "section-hdr", "Shot Distribution (avg 2P vs 3P attempt share)"),
       plotOutput("sh_zone_dist", height = "340px"),
       br(),
       layout_columns(col_widths = c(6,6),
         div(
-          div(class = "section-hdr", "Top 20 — Rim FG%"),
+          div(class = "section-hdr", "Two-Point FG%"),
           plotOutput("sh_rim_plot", height = "360px")
         ),
         div(
@@ -694,24 +694,22 @@ server <- function(input, output, session) {
   output$sh_zone_dist <- renderPlot({
     d <- sh_display()
     s <- input$sh_side
-    rim_r   <- paste0(s,"_rim_rate");   mid_r  <- paste0(s,"_mid_rate")
     three_r <- paste0(s,"_three_rate")
-    req(all(c(rim_r, mid_r, three_r) %in% names(d)))
+    req(three_r %in% names(d))
+    three_rate <- mean(d[[three_r]], na.rm=TRUE)
     avgs <- tibble(
-      Zone  = c("Rim","Mid-Range","Three"),
-      Rate  = c(mean(d[[rim_r]], na.rm=TRUE),
-                mean(d[[mid_r]], na.rm=TRUE),
-                mean(d[[three_r]], na.rm=TRUE))
+      Zone = c("Two-Point","Three-Point"),
+      Rate = c(100 - three_rate, three_rate)
     )
-    avgs$Zone <- factor(avgs$Zone, levels=c("Three","Mid-Range","Rim"))
+    avgs$Zone <- factor(avgs$Zone, levels=c("Three-Point","Two-Point"))
     side_lbl <- if (s=="o") "Offensive" else "Defensive"
     ggplot(avgs, aes(x="Average", y=Rate, fill=Zone)) +
       geom_col(width=0.55) +
       geom_text(aes(label=paste0(round(Rate,1),"%")), position=position_stack(vjust=0.5),
                 color="white", fontface="bold", size=4.5) +
-      scale_fill_manual(values=c("Rim"="#1a3a5c","Mid-Range"="#e07b24","Three"="#27ae60")) +
+      scale_fill_manual(values=c("Two-Point"="#1a3a5c","Three-Point"="#27ae60")) +
       coord_flip() +
-      labs(title=paste(side_lbl, "— Average Shot Zone Distribution"),
+      labs(title=paste(side_lbl, "— Avg Shot Distribution (2P vs 3P attempts)"),
            x=NULL, y="% of FGA") +
       theme_minimal(base_size=13) +
       theme(axis.text.y=element_blank(), axis.ticks.y=element_blank())
@@ -720,16 +718,20 @@ server <- function(input, output, session) {
   output$sh_rim_plot <- renderPlot({
     d <- sh_display()
     s <- input$sh_side
-    rim_pct  <- paste0(s,"_rim_pct");  rim_rate <- paste0(s,"_rim_rate")
-    req(all(c(rim_pct, rim_rate) %in% names(d)))
+    two_pct <- paste0(s,"_two_pct"); efg <- paste0(s,"_efg")
+    req(two_pct %in% names(d))
     side_lbl <- if (s=="o") "Offensive" else "Defensive"
-    top20 <- d |> arrange(desc(.data[[rim_pct]])) |> head(20)
-    ggplot(top20, aes(x=reorder(team, .data[[rim_pct]]), y=.data[[rim_pct]], fill=.data[[rim_rate]])) +
+    # Offense: best 2P shooting on top. Defense: best (lowest allowed) on top.
+    top20 <- if (s=="o") d |> arrange(desc(.data[[two_pct]])) |> head(20)
+             else        d |> arrange(.data[[two_pct]]) |> head(20)
+    fill_col <- if (efg %in% names(d)) efg else two_pct
+    ggplot(top20, aes(x=reorder(team, .data[[two_pct]]), y=.data[[two_pct]], fill=.data[[fill_col]])) +
       geom_col(width=0.7) +
-      scale_fill_gradient(low="#fdebd0", high="#e07b24", name="Rim\nRate %") +
-      geom_text(aes(label=paste0(.data[[rim_pct]],"%")), hjust=-0.1, size=3) +
+      scale_fill_gradient(low="#fdebd0", high="#e07b24", name="eFG%") +
+      geom_text(aes(label=paste0(.data[[two_pct]],"%")), hjust=-0.1, size=3) +
       coord_flip(clip="off") +
-      labs(title=paste("Top 20 —", side_lbl, "Rim FG%"), x=NULL, y="Rim FG%") +
+      labs(title=paste(if(s=="o")"Top 20 —" else "Best 20 D —", side_lbl, "Two-Point FG%"),
+           x=NULL, y="2P FG%") +
       theme_minimal(base_size=10) +
       theme(plot.margin=margin(r=30))
   })
@@ -754,19 +756,17 @@ server <- function(input, output, session) {
   output$sh_table <- renderDT({
     d <- sh_display()
     s <- input$sh_side
-    keep <- c("team","conf","gp",
-              paste0(s, c("_rim_pct","_rim_rate","_mid_pct","_mid_rate",
-                          "_three_pct","_three_rate","_dunk_pct")))
+    keep <- c("team","conf",
+              paste0(s, c("_efg","_two_pct","_three_pct","_ft_pct","_three_rate")))
     keep <- intersect(keep, names(d))
     d2 <- d[, keep]
-    col_lbls <- c("Team","Conf","GP","Rim FG%","Rim Rate%","Mid FG%","Mid Rate%",
-                  "3P FG%","3P Rate%","Dunk%")[seq_len(length(keep))]
+    col_lbls <- c("Team","Conf","eFG%","2P FG%","3P FG%","FT%","3P Rate%")[seq_len(length(keep))]
     datatable(
       d2, colnames=col_lbls, rownames=FALSE, filter="top",
       options = list(pageLength=25, dom="frtip", scrollX=TRUE),
       class   = "stripe hover compact"
     ) |>
-      formatStyle(intersect(c(paste0(s,"_rim_pct"), paste0(s,"_three_pct")), keep),
+      formatStyle(intersect(c(paste0(s,"_efg"), paste0(s,"_three_pct")), keep),
         background=styleColorBar(c(0,100), "#cce5ff"),
         backgroundSize="100% 70%", backgroundRepeat="no-repeat", backgroundPosition="center")
   })
@@ -893,20 +893,19 @@ server <- function(input, output, session) {
     for (col in pct_cols) sh_d[[col]] <- round(pct_scale(sh_d[[col]]), 1)
 
     zones <- tibble(
-      Zone = rep(c("Rim","Mid","Three"), 2),
-      Rate = c(sh_d$o_rim_rate[1], sh_d$o_mid_rate[1], sh_d$o_three_rate[1],
-               sh_d$d_rim_rate[1], sh_d$d_mid_rate[1], sh_d$d_three_rate[1]),
-      Pct  = c(sh_d$o_rim_pct[1], sh_d$o_mid_pct[1], sh_d$o_three_pct[1],
-               sh_d$d_rim_pct[1], sh_d$d_mid_pct[1], sh_d$d_three_pct[1]),
-      Side = c(rep("Offense",3), rep("Defense",3))
+      Metric = rep(c("eFG%","2P FG%","3P FG%","FT%"), 2),
+      Pct    = c(sh_d$o_efg[1], sh_d$o_two_pct[1], sh_d$o_three_pct[1], sh_d$o_ft_pct[1],
+                 sh_d$d_efg[1], sh_d$d_two_pct[1], sh_d$d_three_pct[1], sh_d$d_ft_pct[1]),
+      Side   = c(rep("Offense",4), rep("Defense",4))
     )
-    zones$Zone <- factor(zones$Zone, levels=c("Rim","Mid","Three"))
-    ggplot(zones, aes(x=Zone, y=Rate, fill=Side)) +
-      geom_col(position="dodge", width=0.65) +
-      geom_text(aes(label=paste0(round(Rate,1),"%")),
-                position=position_dodge(width=0.65), vjust=-0.4, size=3) +
+    zones$Metric <- factor(zones$Metric, levels=c("eFG%","2P FG%","3P FG%","FT%"))
+    ggplot(zones, aes(x=Metric, y=Pct, fill=Side)) +
+      geom_col(position="dodge", width=0.7) +
+      geom_text(aes(label=paste0(round(Pct,1),"%")),
+                position=position_dodge(width=0.7), vjust=-0.4, size=3) +
       scale_fill_manual(values=c("Offense"="#1a3a5c","Defense"="#e07b24")) +
-      labs(x="Shot Zone", y="% of FGA", title=NULL) +
+      labs(x=NULL, y="Shooting %", title=NULL,
+           subtitle="Offense = team shooting · Defense = opponents vs this team") +
       theme_minimal(base_size=11) +
       theme(legend.position="top")
   })
