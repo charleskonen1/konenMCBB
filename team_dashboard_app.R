@@ -33,22 +33,18 @@ if (has_dt) library(DT)
 base_path <- getOption("konenMCBB.espn_db_path", "data/espn_db")
 
 ## Load team- and player-game data
-tg_raw <- konenMCBB:::espn_team_games("2024-25", base_path = base_path)
-pg_raw <- konenMCBB:::espn_player_games("2024-25", base_path = base_path)
+tg_raw <- konenMCBB::espn_team_games("2024-25", base_path = base_path)
+pg_raw <- konenMCBB::espn_player_games("2024-25", base_path = base_path)
 
-team_games <- tg_raw %>%
-  filter(
-    game_date >= as.Date("2024-11-11"),
-    game_date <= as.Date("2024-11-20")
-  )
+team_games <- tg_raw
 
 if (nrow(team_games) == 0L) {
-  stop("No team-game rows found for 2024-11-11 to 2024-11-20. ",
-       "Run scripts/espn_build_2024_11_11_20.R first.")
+  stop("No team-game data found for 2024-25. ",
+       "Run espn_process_day() for one or more dates first.")
 }
 
 ## Build team lookup (id -> display name, abbreviation) from game.rds when available
-game_dirs <- konenMCBB:::.espn_list_game_dirs(base_path, "2024-25")
+game_dirs <- konenMCBB::espn_list_game_dirs(base_path, "2024-25")
 team_lookup <- tibble(
   team_id = character(),
   team_name = character(),
@@ -131,12 +127,16 @@ team_choices <- team_choices[order(names(team_choices))]
 pal_factors <- c("#2ecc71", "#e74c3c", "#3498db", "#9b59b6")
 pal_wl <- c("W" = "#27ae60", "L" = "#c0392b")
 
+db_min_date <- min(team_games$game_date, na.rm = TRUE)
+db_max_date <- max(team_games$game_date, na.rm = TRUE)
+db_season_label <- format(db_min_date, "%b %Y")
+
 ui <- fluidPage(
   theme = if (has_bslib) bslib::bs_theme(bootswatch = "flatly", primary = "#2980b9") else NULL,
   titlePanel(
     div(
       span("NCAA MBB Team Dashboard", style = "font-weight: 700;"),
-      span(" | ESPN · Nov 11–20, 2024", style = "color: #7f8c8d; font-size: 0.9em;")
+      span(paste0(" | ESPN · ", db_season_label), style = "color: #7f8c8d; font-size: 0.9em;")
     )
   ),
   sidebarLayout(
@@ -151,10 +151,10 @@ ui <- fluidPage(
       dateRangeInput(
         "date_range",
         "Date range",
-        start = as.Date("2024-11-11"),
-        end   = as.Date("2024-11-20"),
-        min   = min(team_games$game_date),
-        max   = max(team_games$game_date)
+        start = db_min_date,
+        end   = db_max_date,
+        min   = db_min_date,
+        max   = db_max_date
       ),
       hr(),
       p("Summary and game-level stats from ESPN game data.", style = "font-size: 0.85em; color: #7f8c8d;")

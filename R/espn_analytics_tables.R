@@ -1,4 +1,10 @@
-.espn_list_game_dirs <- function(base_path, season) {
+#' List all game directories for a season in the local ESPN database
+#'
+#' @param base_path Character. ESPN database root path.
+#' @param season Character. Season label (e.g. `"2024-25"`).
+#' @return Character vector of game directory paths, or `character(0)` if none found.
+#' @export
+espn_list_game_dirs <- function(base_path, season) {
   season <- as.character(season)
   season_dir <- .espn_db_season_dir(base_path, season)
   if (!dir.exists(season_dir)) {
@@ -17,11 +23,20 @@
   game_dirs[dir.exists(game_dirs)]
 }
 
+#' Load all team box scores for a season from the local ESPN database
+#'
+#' @param season Character. Season label (e.g. `"2024-25"`).
+#' @param base_path Character. ESPN database root path. Defaults to
+#'   `getOption("konenMCBB.espn_db_path")`.
+#' @return A tibble with one row per team per game, with added columns:
+#'   `season`, `game_date`, `game_id`, `opponent_team_id`, `points_allowed`,
+#'   `margin`, `won`, `is_home`, `is_away`.
+#' @export
 espn_team_games <- function(season, base_path = .espn_db_base()) {
   season <- as.character(season)
   base_path <- base_path %||% .espn_db_base()
 
-  game_dirs <- .espn_list_game_dirs(base_path, season)
+  game_dirs <- espn_list_game_dirs(base_path, season)
   if (length(game_dirs) == 0L) {
     return(tibble::tibble())
   }
@@ -106,11 +121,19 @@ espn_team_games <- function(season, base_path = .espn_db_base()) {
   tibble::as_tibble(out)
 }
 
+#' Load all player box scores for a season from the local ESPN database
+#'
+#' @param season Character. Season label (e.g. `"2024-25"`).
+#' @param base_path Character. ESPN database root path. Defaults to
+#'   `getOption("konenMCBB.espn_db_path")`.
+#' @return A tibble with one row per player per game, with added columns:
+#'   `season`, `game_date`, `game_id`.
+#' @export
 espn_player_games <- function(season, base_path = .espn_db_base()) {
   season <- as.character(season)
   base_path <- base_path %||% .espn_db_base()
 
-  game_dirs <- .espn_list_game_dirs(base_path, season)
+  game_dirs <- espn_list_game_dirs(base_path, season)
   if (length(game_dirs) == 0L) {
     return(tibble::tibble())
   }
