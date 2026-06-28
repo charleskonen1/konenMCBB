@@ -151,6 +151,33 @@ fmt_chr <- function(x) {
   as.character(x)
 }
 
+# ── Card layout helpers ─────────────────────────────────────────────────────────
+# Every plot / table lives in a full-screen-able bslib card so a cramped chart
+# can always be expanded to the full viewport.
+plot_card <- function(title, id, min_h = 400, sub = NULL) {
+  card(
+    full_screen = TRUE,
+    min_height  = min_h,
+    card_header(title, class = "d-flex align-items-center"),
+    if (!is.null(sub)) div(class = "card-sub", sub),
+    plotOutput(id, height = "100%")
+  )
+}
+
+table_card <- function(title, id, sub = NULL) {
+  card(
+    full_screen = TRUE,
+    card_header(title),
+    if (!is.null(sub)) div(class = "card-sub", sub),
+    DTOutput(id)
+  )
+}
+
+# Responsive row of stat-card uiOutputs (reflows to 2 cols, then 1, when narrow).
+cards_row <- function(...) {
+  layout_column_wrap(width = 1/4, gap = "10px", heights_equal = "row", ...)
+}
+
 # ── UI ────────────────────────────────────────────────────────────────────────
 ui <- page_navbar(
   title = div(
@@ -164,15 +191,24 @@ ui <- page_navbar(
       tags$link(rel = "stylesheet",
                 href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"),
       tags$style(HTML("
+        body { background:#eef1f5; }
         .metric-card { border-radius:8px; padding:14px 10px; background:#f8f9fa;
                        margin-bottom:10px; text-align:center; }
         .metric-val  { font-size:1.8rem; font-weight:700; color:#1a3a5c; }
         .metric-lbl  { font-size:0.78rem; color:#6c757d; margin-top:2px; }
-        .section-hdr { font-size:1rem; font-weight:600; color:#1a3a5c;
-                       border-bottom:2px solid #e07b24; padding-bottom:4px;
-                       margin:18px 0 10px; }
+        /* bslib card polish */
+        .card { border:none; border-radius:12px;
+                box-shadow:0 1px 3px rgba(16,42,67,0.08), 0 1px 2px rgba(16,42,67,0.04); }
+        .card-header { background:#fff; border-bottom:2px solid #e07b24;
+                       font-weight:600; color:#1a3a5c; font-size:0.98rem;
+                       padding:10px 14px; }
+        .card-sub    { font-size:0.8rem; color:#6c757d; padding:6px 14px 0; }
+        .card-body   { padding:12px 14px; }
         .team-logo   { vertical-align:middle; margin-right:6px; }
-        .nav-link    { font-size:0.9rem; }
+        .nav-link    { font-size:0.92rem; }
+        .form-label  { font-weight:600; font-size:0.85rem; color:#34495e; }
+        /* tighten DT inside cards */
+        .card .dataTables_wrapper { padding-top:4px; }
       "))
     ),
     if (is_offseason) div(
@@ -188,23 +224,20 @@ ui <- page_navbar(
     title = icon_text("trophy", "T-Rank"),
     value = "rankings",
     layout_sidebar(
-      sidebar = sidebar(width = 220,
+      sidebar = sidebar(width = 230, open = "desktop",
         selectInput("rank_year", "Season", choices = year_choices, selected = default_year),
         selectInput("rank_conf", "Conference", choices = conf_choices),
         sliderInput("rank_n", "Top N teams", min = 10, max = 363, value = 25, step = 5),
         hr(),
         actionButton("load_rankings", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      layout_columns(col_widths = c(3,3,3,3),
+      cards_row(
         uiOutput("rank_card_1"), uiOutput("rank_card_2"),
         uiOutput("rank_card_3"), uiOutput("rank_card_4")
       ),
-      br(),
-      div(class = "section-hdr", "Rankings Table"),
-      DTOutput("rankings_table"),
-      br(),
-      div(class = "section-hdr", "Offense vs. Defense Landscape"),
-      plotOutput("rank_scatter", height = "480px")
+      plot_card("Offense vs. Defense Landscape", "rank_scatter", min_h = 520,
+                sub = "Down-right = elite two-way. Click the expand icon (top-right) for full screen."),
+      table_card("Rankings Table", "rankings_table")
     )
   ),
 
@@ -213,28 +246,18 @@ ui <- page_navbar(
     title = icon_text("chart-bar", "Conference"),
     value = "conference",
     layout_sidebar(
-      sidebar = sidebar(width = 220,
+      sidebar = sidebar(width = 230, open = "desktop",
         selectInput("conf_year", "Season", choices = year_choices, selected = default_year),
         numericInput("conf_min_teams", "Min teams", value = 8, min = 4, max = 20),
         hr(),
         actionButton("load_conf", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      div(class = "section-hdr", "Conference Strength (Avg. Barthag)"),
-      plotOutput("conf_barthag_plot", height = "420px"),
-      br(),
-      layout_columns(col_widths = c(6,6),
-        div(
-          div(class = "section-hdr", "Offense vs. Defense by Conference"),
-          plotOutput("conf_oe_de_plot", height = "360px")
-        ),
-        div(
-          div(class = "section-hdr", "Pace by Conference"),
-          plotOutput("conf_tempo_plot", height = "360px")
-        )
+      plot_card("Conference Strength (Avg. Barthag)", "conf_barthag_plot", min_h = 440),
+      layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
+        plot_card("Offense vs. Defense by Conference", "conf_oe_de_plot", min_h = 380),
+        plot_card("Pace by Conference", "conf_tempo_plot", min_h = 380)
       ),
-      br(),
-      div(class = "section-hdr", "Conference Summary Table"),
-      DTOutput("conf_table")
+      table_card("Conference Summary Table", "conf_table")
     )
   ),
 
@@ -243,7 +266,7 @@ ui <- page_navbar(
     title = icon_text("sliders", "Four Factors"),
     value = "fourfactors",
     layout_sidebar(
-      sidebar = sidebar(width = 240,
+      sidebar = sidebar(width = 250, open = "desktop",
         selectInput("ff_year", "Season", choices = year_choices, selected = default_year),
         selectInput("ff_conf", "Conference", choices = conf_choices),
         hr(),
@@ -261,12 +284,10 @@ ui <- page_navbar(
         hr(),
         actionButton("load_ff", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      div(class = "section-hdr", "Four Factors Scatter"),
-      plotOutput("ff_scatter", height = "520px"),
-      br(),
-      div(class = "section-hdr", "Four Factors Table (%)"),
-      p("eFG%, TO%, Reb%, FT Rate all shown as percentages.", style="font-size:0.83em;color:#6c757d;"),
-      DTOutput("ff_table")
+      plot_card("Four Factors Scatter", "ff_scatter", min_h = 540,
+                sub = "Pick the X and Y metrics in the sidebar. Toggle point labels there too."),
+      table_card("Four Factors Table", "ff_table",
+                 sub = "eFG%, TO%, Reb%, FT Rate shown as percentages.")
     )
   ),
 
@@ -275,30 +296,20 @@ ui <- page_navbar(
     title = icon_text("bullseye", "Shooting"),
     value = "shooting",
     layout_sidebar(
-      sidebar = sidebar(width = 240,
+      sidebar = sidebar(width = 250, open = "desktop",
         selectInput("sh_year", "Season", choices = year_choices, selected = default_year),
         selectInput("sh_conf", "Conference", choices = conf_choices),
         selectInput("sh_side", "Side", choices = c("Offense"="o","Defense"="d"), selected = "o"),
         hr(),
         actionButton("load_sh", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      div(class = "section-hdr", "Shot Distribution (avg 2P vs 3P attempt share)"),
-      plotOutput("sh_zone_dist", height = "340px"),
-      br(),
-      layout_columns(col_widths = c(6,6),
-        div(
-          div(class = "section-hdr", "Two-Point FG%"),
-          plotOutput("sh_rim_plot", height = "360px")
-        ),
-        div(
-          div(class = "section-hdr", "Top 20 — Three-Point Rate"),
-          plotOutput("sh_three_plot", height = "360px")
-        )
+      plot_card("Shot Distribution — avg 2P vs 3P attempt share", "sh_zone_dist", min_h = 300),
+      layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
+        plot_card("Two-Point FG% (Top 20)", "sh_rim_plot", min_h = 420),
+        plot_card("Three-Point Rate (Top 20)", "sh_three_plot", min_h = 420)
       ),
-      br(),
-      div(class = "section-hdr", "Full Shooting Table (%)"),
-      p("All pct and rate values shown as percentages (e.g. 64.2 = 64.2%).", style="font-size:0.83em;color:#6c757d;"),
-      DTOutput("sh_table")
+      table_card("Full Shooting Table", "sh_table",
+                 sub = "All pct and rate values shown as percentages (e.g. 64.2 = 64.2%).")
     )
   ),
 
@@ -307,16 +318,14 @@ ui <- page_navbar(
     title = icon_text("calendar-day", "Today's Slate"),
     value = "today",
     layout_sidebar(
-      sidebar = sidebar(width = 220,
+      sidebar = sidebar(width = 230, open = "desktop",
         p(strong("Date:"), format(Sys.Date(), "%B %d, %Y")),
         selectInput("today_year", "Season", choices = year_choices, selected = default_year),
         hr(),
         actionButton("load_today", "Refresh Slate", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      div(class = "section-hdr", "Games on Today's Board"),
-      DTOutput("today_table"),
-      br(),
-      plotOutput("today_plot", height = "360px")
+      table_card("Games on Today's Board", "today_table"),
+      plot_card("Game Quality (TTQ)", "today_plot", min_h = 400)
     )
   ),
 
@@ -325,37 +334,25 @@ ui <- page_navbar(
     title = icon_text("shirt", "Team Profile"),
     value = "team_profile",
     layout_sidebar(
-      sidebar = sidebar(width = 240,
+      sidebar = sidebar(width = 250, open = "desktop",
         selectInput("tp_year", "Season", choices = year_choices, selected = default_year),
         uiOutput("tp_team_ui"),
         hr(),
-        actionButton("load_tp_list", "Load Teams", class = "btn-secondary w-100", icon = icon("download")),
-        br(), br(),
-        actionButton("load_tp", "Load Profile", class = "btn-primary w-100", icon = icon("rotate"))
+        actionButton("load_tp", "Load Profile", class = "btn-primary w-100", icon = icon("rotate")),
+        helpText("Team list loads automatically when you open this tab.")
       ),
       uiOutput("tp_header"),
-      br(),
-      layout_columns(col_widths = c(3,3,3,3),
+      cards_row(
         uiOutput("tp_card_rank"), uiOutput("tp_card_barthag"),
         uiOutput("tp_card_oe"),   uiOutput("tp_card_de")
       ),
-      br(),
-      layout_columns(col_widths = c(6,6),
-        div(
-          div(class = "section-hdr", "Four Factors"),
-          plotOutput("tp_ff_plot", height = "320px")
-        ),
-        div(
-          div(class = "section-hdr", "Shot Zone Profile"),
-          plotOutput("tp_shot_plot", height = "320px")
-        )
+      layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
+        plot_card("Four Factors (Offense vs. Defense)", "tp_ff_plot", min_h = 360),
+        plot_card("Shooting Profile (Offense vs. Defense)", "tp_shot_plot", min_h = 360)
       ),
-      br(),
-      div(class = "section-hdr", "Season Stats Summary"),
-      tableOutput("tp_stats_table"),
-      br(),
-      div(class = "section-hdr", "Game Log"),
-      DTOutput("tp_game_log")
+      card(full_screen = TRUE, card_header("Season Stats Summary"),
+           tableOutput("tp_stats_table")),
+      table_card("Game Log", "tp_game_log")
     )
   ),
 
@@ -364,28 +361,20 @@ ui <- page_navbar(
     title = icon_text("person", "Players"),
     value = "players",
     layout_sidebar(
-      sidebar = sidebar(width = 240,
+      sidebar = sidebar(width = 250, open = "desktop",
         selectInput("pl_year", "Season", choices = year_choices, selected = default_year),
         sliderInput("pl_gp",  "Min games played", min = 1, max = 35, value = 10),
         sliderInput("pl_usg", "Min usage %", min = 0, max = 35, value = 15),
         hr(),
-        p("Click any row to view a player's full stat line.", style="font-size:0.83em;color:#6c757d;"),
-        actionButton("load_pl", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
+        actionButton("load_pl", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate")),
+        helpText("Click any table row to open that player's profile.")
       ),
       uiOutput("player_profile_panel"),
-      layout_columns(col_widths = c(6,6),
-        div(
-          div(class = "section-hdr", "Top 25 by BPM"),
-          plotOutput("pl_bpm_plot", height = "380px")
-        ),
-        div(
-          div(class = "section-hdr", "Usage vs. Offensive Rating"),
-          plotOutput("pl_ortg_plot", height = "380px")
-        )
+      layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
+        plot_card("Top 25 by BPM 2.0", "pl_bpm_plot", min_h = 440),
+        plot_card("Usage vs. Offensive Rating", "pl_ortg_plot", min_h = 440)
       ),
-      br(),
-      div(class = "section-hdr", "Player Table — click a row to view full profile"),
-      DTOutput("pl_table")
+      table_card("Player Table — click a row to view a full profile", "pl_table")
     )
   ),
 
@@ -394,26 +383,21 @@ ui <- page_navbar(
     title = icon_text("clipboard-list", "Team Resume"),
     value = "resume",
     layout_sidebar(
-      sidebar = sidebar(width = 240,
+      sidebar = sidebar(width = 250, open = "desktop",
         selectInput("res_year", "Season", choices = year_choices, selected = default_year),
         uiOutput("res_team_ui"),
         selectInput("res_quad", "Quadrant filter",
                     choices = c("All"="All","Quad 1"="1","Quad 2"="2","Quad 3"="3","Quad 4"="4")),
         hr(),
-        actionButton("load_res_teams", "Load Teams", class = "btn-secondary w-100", icon = icon("download")),
-        br(), br(),
-        actionButton("load_res", "Load Games", class = "btn-primary w-100", icon = icon("rotate"))
+        actionButton("load_res", "Load Games", class = "btn-primary w-100", icon = icon("rotate")),
+        helpText("Team list loads automatically when you open this tab.")
       ),
-      layout_columns(col_widths = c(3,3,3,3),
+      cards_row(
         uiOutput("res_card_w"), uiOutput("res_card_l"),
         uiOutput("res_card_adjoe"), uiOutput("res_card_adjde")
       ),
-      br(),
-      div(class = "section-hdr", "Adj. OE by Game"),
-      plotOutput("res_result_plot", height = "300px"),
-      br(),
-      div(class = "section-hdr", "Game Log"),
-      DTOutput("res_table")
+      plot_card("Adj. Offensive Efficiency by Game", "res_result_plot", min_h = 380),
+      table_card("Game Log", "res_table")
     )
   ),
 
@@ -422,22 +406,18 @@ ui <- page_navbar(
     title = icon_text("calendar-week", "Super Schedule"),
     value = "supersked",
     layout_sidebar(
-      sidebar = sidebar(width = 240,
+      sidebar = sidebar(width = 250, open = "desktop",
         selectInput("ss_year", "Season", choices = year_choices, selected = default_year),
         hr(),
         p("All scheduled games with Torvik predictions, win probabilities, and game quality (TTQ).",
           style="font-size:0.83em;color:#6c757d;"),
         actionButton("load_ss", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      layout_columns(col_widths = c(6,6),
-        div(div(class="section-hdr","Top Games by Quality (TTQ)"),
-            plotOutput("ss_ttq_plot", height = "380px")),
-        div(div(class="section-hdr","Spread vs. Win Probability"),
-            plotOutput("ss_line_plot", height = "380px"))
+      layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
+        plot_card("Top Games by Quality (TTQ)", "ss_ttq_plot", min_h = 420),
+        plot_card("Spread vs. Win Probability", "ss_line_plot", min_h = 420)
       ),
-      br(),
-      div(class = "section-hdr", "Full Schedule"),
-      DTOutput("ss_table")
+      table_card("Full Schedule", "ss_table")
     )
   ),
 
@@ -446,7 +426,7 @@ ui <- page_navbar(
     title = icon_text("clock-rotate-left", "Time Machine"),
     value = "timemachine",
     layout_sidebar(
-      sidebar = sidebar(width = 240,
+      sidebar = sidebar(width = 250, open = "desktop",
         dateInput("tm_date", "Snapshot date",
                   value = Sys.Date() - 1,
                   min   = as.Date("2014-11-13"),
@@ -456,16 +436,12 @@ ui <- page_navbar(
         hr(),
         actionButton("load_tm", "Load Snapshot", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      layout_columns(col_widths = c(3,3,3,3),
+      cards_row(
         uiOutput("tm_card_1"), uiOutput("tm_card_2"),
         uiOutput("tm_card_3"), uiOutput("tm_card_4")
       ),
-      br(),
-      div(class = "section-hdr", "Barthag Power Rating"),
-      plotOutput("tm_barthag_plot", height = "420px"),
-      br(),
-      div(class = "section-hdr", "Full Snapshot Table"),
-      DTOutput("tm_table")
+      plot_card("Barthag Power Rating", "tm_barthag_plot", min_h = 440),
+      table_card("Full Snapshot Table", "tm_table")
     )
   )
 )
@@ -802,7 +778,7 @@ server <- function(input, output, session) {
       coord_flip(clip="off") +
       labs(title=paste(if(s=="o")"Top 20 —" else "Best 20 D —", side_lbl, "Two-Point FG%"),
            x=NULL, y="2P FG%") +
-      theme_minimal(base_size=10) +
+      theme_minimal(base_size=12) +
       theme(plot.margin=margin(r=30))
   })
 
@@ -819,7 +795,7 @@ server <- function(input, output, session) {
       geom_text(aes(label=paste0(.data[[thr_rate]],"%")), hjust=-0.1, size=3) +
       coord_flip(clip="off") +
       labs(title=paste("Top 20 —", side_lbl, "Three-Point Rate"), x=NULL, y="% of FGA from Three") +
-      theme_minimal(base_size=10) +
+      theme_minimal(base_size=12) +
       theme(plot.margin=margin(r=30))
   })
 
@@ -1087,7 +1063,7 @@ server <- function(input, output, session) {
       scale_fill_gradient2(low="#c0392b", mid="#ecf0f1", high="#1a5276", midpoint=0) +
       coord_flip(clip="off") +
       labs(title="Top 25 Players by BPM", x=NULL, y="Box Plus/Minus") +
-      theme_minimal(base_size=10) +
+      theme_minimal(base_size=12) +
       theme(legend.position="none", plot.margin=margin(r=20))
   })
 
@@ -1230,8 +1206,8 @@ server <- function(input, output, session) {
       scale_fill_manual(values=c("W"="#27ae60","L"="#c0392b"),name=NULL) +
       coord_flip() +
       labs(title=paste("Adj. OE by Game —",input$res_team),x=NULL,y="Adj. OE") +
-      theme_minimal(base_size=10) +
-      theme(axis.text.y=element_text(size=8))
+      theme_minimal(base_size=12) +
+      theme(axis.text.y=element_text(size=10))
   })
 
   output$res_table <- renderDT({
@@ -1268,8 +1244,8 @@ server <- function(input, output, session) {
       coord_flip(clip="off") +
       labs(title="Top 25 Games by Torvik Thrill Quotient (TTQ)",
            subtitle="Higher = better quality matchup", x=NULL, y="TTQ") +
-      theme_minimal(base_size=10) +
-      theme(axis.text.y=element_text(size=8), plot.margin=margin(r=30))
+      theme_minimal(base_size=12) +
+      theme(axis.text.y=element_text(size=10), plot.margin=margin(r=30))
   })
 
   output$ss_line_plot <- renderPlot({
@@ -1383,15 +1359,19 @@ server <- function(input, output, session) {
     d$bart_val <- as.numeric(d[[barthag_col]])
     d <- d[!is.na(d$bart_val),]
     d$bart_pct <- d$bart_val * 100
+    # Keep the bar chart legible even if the table shows hundreds of teams.
+    n_bars <- min(30, nrow(d))
+    d <- d[order(-d$bart_pct), ][seq_len(n_bars), ]
     ggplot(d, aes(x=reorder(team_lbl,bart_pct),y=bart_pct,fill=bart_pct)) +
       geom_col(width=0.7) +
       geom_text(aes(label=paste0(round(bart_pct,1),"%")),hjust=-0.1,size=3) +
       scale_fill_gradient(low="#cce5ff",high="#1a3a5c",guide="none") +
       scale_y_continuous(labels=function(x) paste0(x,"%")) +
       coord_flip(clip="off") +
-      labs(title=paste("Barthag % —",format(as.Date(input$tm_date),"%b %d, %Y")),x=NULL,y="Barthag %") +
-      theme_minimal(base_size=10) +
-      theme(axis.text.y=element_text(size=8), plot.margin=margin(r=30))
+      labs(title=paste0("Top ", n_bars, " by Barthag — ", format(as.Date(input$tm_date),"%b %d, %Y")),
+           x=NULL,y="Barthag %") +
+      theme_minimal(base_size=12) +
+      theme(axis.text.y=element_text(size=10), plot.margin=margin(r=30))
   })
 
   output$tm_table <- renderDT({
