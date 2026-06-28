@@ -73,9 +73,13 @@ espn_team_games <- function(season, base_path = .espn_db_base()) {
         "field_goals_made", "field_goals_attempted",
         "three_point_field_goals_made", "three_point_field_goals_attempted",
         "free_throws_made", "free_throws_attempted",
-        "rebounds", "offensiveRebounds", "offensive_rebounds",
+        "rebounds", "totalRebounds",
+        "offensiveRebounds", "offensive_rebounds",
         "defensiveRebounds", "defensive_rebounds",
-        "assists", "turnovers"
+        "assists", "steals", "blocks", "turnovers",
+        "teamTurnovers", "totalTurnovers",
+        "fouls", "technicalFouls", "flagrantFouls",
+        "fastBreakPoints", "pointsInPaint", "turnoverPoints", "largestLead"
       ),
       names(df)
     )

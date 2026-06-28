@@ -309,14 +309,21 @@ server <- function(input, output, session) {
     df <- filtered()
     req(nrow(df) > 0)
     orb_col <- if ("offensiveRebounds" %in% names(df)) "offensiveRebounds" else "offensive_rebounds"
+    trb_col <- dplyr::case_when(
+      "totalRebounds" %in% names(df) ~ "totalRebounds",
+      "rebounds"      %in% names(df) ~ "rebounds",
+      TRUE ~ NA_character_
+    )
     df %>%
       summarise(
-        `FG (avg)` = paste0(round(mean(field_goals_made, na.rm = TRUE), 1), "/", round(mean(field_goals_attempted, na.rm = TRUE), 1)),
-        `3P (avg)` = paste0(round(mean(three_point_field_goals_made, na.rm = TRUE), 1), "/", round(mean(three_point_field_goals_attempted, na.rm = TRUE), 1)),
-        `FT (avg)` = paste0(round(mean(free_throws_made, na.rm = TRUE), 1), "/", round(mean(free_throws_attempted, na.rm = TRUE), 1)),
-        `ORB (avg)` = as.character(if (orb_col %in% names(df)) round(mean(df[[orb_col]], na.rm = TRUE), 1) else NA_real_),
-        `TRB (avg)` = as.character(if ("rebounds" %in% names(df)) round(mean(rebounds, na.rm = TRUE), 1) else NA_real_),
-        `AST (avg)` = as.character(if ("assists" %in% names(df)) round(mean(assists, na.rm = TRUE), 1) else NA_real_)
+        `FG (avg)`  = paste0(round(mean(field_goals_made, na.rm = TRUE), 1), "/", round(mean(field_goals_attempted, na.rm = TRUE), 1)),
+        `3P (avg)`  = paste0(round(mean(three_point_field_goals_made, na.rm = TRUE), 1), "/", round(mean(three_point_field_goals_attempted, na.rm = TRUE), 1)),
+        `FT (avg)`  = paste0(round(mean(free_throws_made, na.rm = TRUE), 1), "/", round(mean(free_throws_attempted, na.rm = TRUE), 1)),
+        `ORB (avg)` = as.character(if (!is.na(orb_col) && orb_col %in% names(df)) round(mean(df[[orb_col]], na.rm = TRUE), 1) else NA_real_),
+        `TRB (avg)` = as.character(if (!is.na(trb_col) && trb_col %in% names(df)) round(mean(df[[trb_col]], na.rm = TRUE), 1) else NA_real_),
+        `AST (avg)` = as.character(if ("assists" %in% names(df)) round(mean(assists, na.rm = TRUE), 1) else NA_real_),
+        `STL (avg)` = as.character(if ("steals"  %in% names(df)) round(mean(steals,  na.rm = TRUE), 1) else NA_real_),
+        `BLK (avg)` = as.character(if ("blocks"  %in% names(df)) round(mean(blocks,  na.rm = TRUE), 1) else NA_real_)
       ) %>%
       tidyr::pivot_longer(everything(), names_to = "Stat", values_to = "Avg")
   }, striped = TRUE, hover = TRUE, width = "100%")
@@ -375,7 +382,8 @@ server <- function(input, output, session) {
   output$four_factors <- renderPlot({
     df <- filtered()
     req(nrow(df) > 0)
-    orb_vals <- if ("offensiveRebounds" %in% names(df)) df$offensiveRebounds else if ("offensive_rebounds" %in% names(df)) df$offensive_rebounds else NA_real_
+    orb_vals <- if ("offensiveRebounds"  %in% names(df)) df$offensiveRebounds else
+                if ("offensive_rebounds" %in% names(df)) df$offensive_rebounds else NA_real_
     long <- df %>%
       summarise(
         eFG = mean(effective_field_goal_pct, na.rm = TRUE),
