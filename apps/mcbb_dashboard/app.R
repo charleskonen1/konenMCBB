@@ -24,19 +24,70 @@ have_ggrepel <- requireNamespace("ggrepel", quietly = TRUE)
 # ── Logo lookup (ESPN CDN) ─────────────────────────────────────────────────────
 espn_teams_df <- tryCatch(espn_teams(), error = function(e) NULL)
 
+# Explicit Torvik -> ESPN aliases for names that don't normalise cleanly.
+.team_aliases <- c(
+  "connecticut"            = "uconn",
+  "umkc"                   = "kansas city",
+  "gardner webb"           = "gardnerwebb",
+  "cal baptist"            = "california baptist",
+  "albany"                 = "ualbany",
+  "queens"                 = "queens university",
+  "southeastern louisiana" = "se louisiana",
+  "liu"                    = "long island",
+  "ut rio grande valley"   = "ut rio grande",
+  "purdue fort wayne"      = "fort wayne"
+)
+
+# Normalise a team name so Torvik and ESPN spellings collapse to the same key.
+# Torvik writes "Iowa St." (State) and "St. John's" (Saint); ESPN writes them
+# out in full. We expand both, strip punctuation, and drop common suffixes.
+.norm_team <- function(x) {
+  x <- tolower(trimws(x))
+  x <- gsub("\\bn\\.c\\.", "north carolina", x)
+  x <- gsub("^st\\.?\\s",  "saint ", x)          # leading "St." = Saint
+  x <- gsub("\\sst\\.?$",  " state", x)           # trailing "St." = State
+  x <- gsub("\\sst\\.?\\s"," state ", x)          # mid "St." = State
+  x <- gsub("&", " and ", x)
+  x <- gsub("[^a-z0-9 ]", "", x)
+  x <- gsub("\\b(university|univ)\\b", "", x)
+  x <- gsub("\\s+", " ", x)
+  trimws(x)
+}
+
+# Build a normalized name -> logo_url index across several ESPN fields.
+.logo_index <- local({
+  if (is.null(espn_teams_df)) return(NULL)
+  fields <- c("location", "display_name", "short_name", "nickname")
+  fields <- intersect(fields, names(espn_teams_df))
+  idx <- list()
+  for (f in fields) {
+    keys <- .norm_team(espn_teams_df[[f]])
+    for (i in seq_along(keys)) {
+      k <- keys[i]
+      if (nzchar(k) && is.null(idx[[k]])) idx[[k]] <- espn_teams_df$logo_url[i]
+    }
+  }
+  idx
+})
+
 get_logo_url <- function(team_name) {
-  if (is.null(espn_teams_df) || is.na(team_name)) return(NA_character_)
-  clean  <- function(x) tolower(trimws(gsub("[^a-zA-Z0-9 ]", "", x)))
-  target <- clean(team_name)
-  locs   <- clean(espn_teams_df$location)
-  idx    <- which(locs == target)
-  if (length(idx) == 0) idx <- which(startsWith(locs, substr(target, 1, 8)))
-  if (length(idx) == 0) return(NA_character_)
-  espn_teams_df$logo_url[idx[1]]
+  if (is.null(.logo_index) || is.na(team_name)) return(NA_character_)
+  key <- .norm_team(team_name)
+  if (key %in% names(.team_aliases)) key <- unname(.team_aliases[[key]])
+  if (!is.null(.logo_index[[key]])) return(.logo_index[[key]])
+  # Fall back to a prefix match on the first two words
+  short <- paste(head(strsplit(key, " ")[[1]], 2), collapse = " ")
+  hit <- .logo_index[[short]]
+  if (!is.null(hit)) return(hit)
+  # Last resort: any indexed key that starts with our key (or vice versa)
+  keys <- names(.logo_index)
+  m <- which(startsWith(keys, key) | startsWith(key, keys))
+  if (length(m) > 0) return(.logo_index[[keys[m[1]]]])
+  NA_character_
 }
 
 logo_img <- function(url, size = 28) {
-  if (is.na(url) || is.null(url)) return("")
+  if (length(url) == 0 || is.null(url) || is.na(url)) return("")
   sprintf('<img src="%s" height="%dpx" style="vertical-align:middle;">', url, size)
 }
 
@@ -87,6 +138,17 @@ stat_card <- function(val, lbl, color = "#1a3a5c") {
     div(style = paste0("font-size:1.8rem; font-weight:700; color:", color, ";"), val),
     div(style = "font-size:0.8rem; color:#6c757d; margin-top:2px;", lbl)
   )
+}
+
+# Safe numeric formatter — never prints NA/NaN, shows an em dash instead.
+fmt_num <- function(x, digits = 1, suffix = "") {
+  x <- suppressWarnings(as.numeric(x))
+  if (length(x) == 0 || is.na(x) || is.nan(x)) return("—")
+  paste0(formatC(round(x, digits), format = "f", digits = digits), suffix)
+}
+fmt_chr <- function(x) {
+  if (length(x) == 0 || is.na(x) || !nzchar(trimws(as.character(x)))) return("—")
+  as.character(x)
 }
 
 # ── UI ────────────────────────────────────────────────────────────────────────
@@ -422,6 +484,7 @@ server <- function(input, output, session) {
     tp_data     = NULL,
     tp_games    = NULL,
     tp_shooting = NULL,
+    tp_ff       = NULL,
     res_teams   = NULL,
     resume      = NULL,
     supersked   = NULL,
@@ -504,26 +567,33 @@ server <- function(input, output, session) {
 
   output$rank_scatter <- renderPlot({
     d <- rank_data()
-    p <- ggplot(d, aes(x=adj_oe, y=adj_de, size=barthag, color=barthag, label=team)) +
-      geom_point(alpha=0.75) +
+    req(nrow(d) > 0)
+    # Only label the strongest teams so dense slates stay readable.
+    n_lab  <- min(25, nrow(d))
+    d_lab  <- d |> arrange(desc(barthag)) |> head(n_lab)
+    p <- ggplot(d, aes(x=adj_oe, y=adj_de, size=barthag, color=barthag)) +
+      geom_point(alpha=0.7) +
       scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="Barthag") +
-      scale_size_continuous(range=c(2,9), guide="none") +
+      scale_size_continuous(range=c(2,8), guide="none") +
       scale_y_reverse() +
-      geom_hline(yintercept=mean(d$adj_de, na.rm=TRUE), linetype="dashed", color="grey50", linewidth=0.5) +
-      geom_vline(xintercept=mean(d$adj_oe, na.rm=TRUE), linetype="dashed", color="grey50", linewidth=0.5) +
-      annotate("text", x=-Inf, y=Inf, hjust=-0.1, vjust=1.5, label="Elite Defense", color="grey50", size=3) +
-      annotate("text", x=Inf,  y=Inf, hjust=1.1,  vjust=1.5, label="Two-Way",       color="grey50", size=3) +
-      annotate("text", x=Inf,  y=-Inf,hjust=1.1,  vjust=-0.5,label="Elite Offense", color="grey50", size=3) +
-      labs(title="Adjusted Offense vs. Defense — bubble = Barthag",
-           subtitle="Upper-right = elite two-way team | Lower-right = elite offense | Upper-left = elite defense",
-           x="Adj. Offensive Efficiency", y="Adj. Defensive Efficiency (lower = better)") +
+      geom_hline(yintercept=mean(d$adj_de, na.rm=TRUE), linetype="dashed", color="grey55", linewidth=0.4) +
+      geom_vline(xintercept=mean(d$adj_oe, na.rm=TRUE), linetype="dashed", color="grey55", linewidth=0.4) +
+      labs(title="Adjusted Offense vs. Defense  (bubble & color = Barthag)",
+           subtitle=paste0("Down-right = elite two-way · labels = top ", n_lab, " by Barthag"),
+           x="Adj. Offensive Efficiency  →  better",
+           y="Adj. Defensive Efficiency  →  better (axis reversed)") +
       theme_minimal(base_size=12) +
-      theme(legend.position="right")
+      theme(legend.position="right",
+            plot.subtitle=element_text(color="grey45", size=10))
 
     if (have_ggrepel) {
-      p <- p + ggrepel::geom_text_repel(size=2.8, max.overlaps=15, color="#333")
+      p <- p + ggrepel::geom_text_repel(
+        data=d_lab, aes(label=team), size=3, color="#222",
+        max.overlaps=Inf, min.segment.length=0, segment.color="grey70",
+        box.padding=0.4, point.padding=0.2, seed=1)
     } else {
-      p <- p + geom_text(size=2.5, vjust=-0.8, check_overlap=TRUE, color="#333")
+      p <- p + geom_text(data=d_lab, aes(label=team), size=2.6,
+                         vjust=-0.8, check_overlap=TRUE, color="#222")
     }
     p
   })
@@ -632,7 +702,7 @@ server <- function(input, output, session) {
     if (!xv %in% names(d) || !yv %in% names(d)) {
       return(ggplot() + annotate("text",x=.5,y=.5,label="Column not available",size=5) + theme_void())
     }
-    p <- ggplot(d, aes_string(x=xv, y=yv, color="barthag")) +
+    p <- ggplot(d, aes(x=.data[[xv]], y=.data[[yv]], color=.data[["barthag"]])) +
       geom_point(size=2.8, alpha=0.82) +
       scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="Barthag") +
       geom_hline(yintercept=mean(d[[yv]], na.rm=TRUE), linetype="dashed", color="grey50") +
@@ -641,8 +711,8 @@ server <- function(input, output, session) {
            x=paste0(lbl_map[xv]," (%)"), y=paste0(lbl_map[yv]," (%)")) +
       theme_minimal(base_size=12)
     if (input$ff_label) {
-      fn <- if (have_ggrepel) function(p) p + ggrepel::geom_text_repel(aes_string(label="team"), size=2.5, max.overlaps=20)
-            else              function(p) p + geom_text(aes_string(label="team"), size=2.2, vjust=-0.6, check_overlap=TRUE)
+      fn <- if (have_ggrepel) function(p) p + ggrepel::geom_text_repel(aes(label=.data[["team"]]), size=2.5, max.overlaps=20)
+            else              function(p) p + geom_text(aes(label=.data[["team"]]), size=2.2, vjust=-0.6, check_overlap=TRUE)
       p <- fn(p)
     }
     p
@@ -806,19 +876,28 @@ server <- function(input, output, session) {
   })
 
   # ── Team Profile ──────────────────────────────────────────────────────────
-  observeEvent(input$load_tp_list, {
+  load_tp_teams <- function() {
     withProgress(message="Loading team list...", {
       rv$tp_teams <- tryCatch(
         torvik_team_ratings(year=as.integer(input$tp_year), conf="All"),
         error = function(e) { showNotification(paste("Error:", e$message), type="error"); NULL }
       )
     })
-  }, ignoreNULL=TRUE, ignoreInit=TRUE)
+  }
+  observeEvent(input$load_tp_list, load_tp_teams(), ignoreNULL=TRUE, ignoreInit=TRUE)
+  # Auto-load the team list the first time the user opens this tab.
+  observeEvent(input$main_nav, {
+    if (identical(input$main_nav, "team_profile") && is.null(rv$tp_teams)) load_tp_teams()
+  }, ignoreInit=TRUE)
+  # Re-load when the season changes while on the tab.
+  observeEvent(input$tp_year, {
+    if (identical(input$main_nav, "team_profile")) load_tp_teams()
+  }, ignoreInit=TRUE)
 
   output$tp_team_ui <- renderUI({
     d <- rv$tp_teams
     if (is.null(d) || nrow(d)==0) {
-      selectInput("tp_team", "Team (load teams first)", choices=character(0))
+      selectInput("tp_team", "Team (loading…)", choices=character(0))
     } else {
       selectInput("tp_team", "Team", choices=sort(unique(d$team)), selectize=TRUE)
     }
@@ -828,16 +907,20 @@ server <- function(input, output, session) {
     req(input$tp_team)
     yr <- as.integer(input$tp_year)
     withProgress(message=paste("Loading profile for", input$tp_team, "..."), {
-      rv$tp_data <- tryCatch(
-        torvik_team_ratings(year=yr, conf="All") |> filter(team == input$tp_team),
-        error=function(e) NULL
-      )
+      # Reuse the already-loaded ratings table instead of re-fetching.
+      rv$tp_data <- if (!is.null(rv$tp_teams)) {
+        dplyr::filter(rv$tp_teams, .data$team == input$tp_team)
+      } else NULL
       rv$tp_games <- tryCatch(
         get_games(team=input$tp_team, season=yr, quad="All"),
         error=function(e) NULL
       )
       rv$tp_shooting <- tryCatch(
         torvik_shooting(year=yr, conf="All") |> filter(team == input$tp_team),
+        error=function(e) NULL
+      )
+      rv$tp_ff <- tryCatch(
+        torvik_four_factors(year=yr, conf="All") |> filter(team == input$tp_team),
         error=function(e) NULL
       )
     })
@@ -849,24 +932,20 @@ server <- function(input, output, session) {
     div(style="display:flex; align-items:center; gap:16px; padding:8px 0;",
       if (!is.na(logo_url)) tags$img(src=logo_url, height="60px"),
       div(
-        h3(d$team[1], style="margin:0; color:#1a3a5c; font-weight:700;"),
-        p(paste0(d$conf[1], " · ", d$record[1], " · Rank #", d$rank[1]),
-          style="margin:0; color:#6c757d;")
+        h3(fmt_chr(d$team[1]), style="margin:0; color:#1a3a5c; font-weight:700;"),
+        div(paste0(fmt_chr(d$conf[1]), " · ", fmt_chr(d$record[1]), " · Rank #", fmt_chr(d$rank[1])),
+          style="color:#6c757d;")
       )
     )
   })
 
-  output$tp_card_rank    <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(paste0("#",d$rank[1]),"T-Rank") })
-  output$tp_card_barthag <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(paste0(round(d$barthag[1]*100,1),"%"),"Barthag","#27ae60") })
-  output$tp_card_oe      <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(round(d$adj_oe[1],1),"Adj. OE","#2980b9") })
-  output$tp_card_de      <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(round(d$adj_de[1],1),"Adj. DE","#8e44ad") })
+  output$tp_card_rank    <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(paste0("#",fmt_chr(d$rank[1])),"T-Rank") })
+  output$tp_card_barthag <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(fmt_num(d$barthag[1]*100,1,"%"),"Barthag","#27ae60") })
+  output$tp_card_oe      <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(fmt_num(d$adj_oe[1],1),"Adj. OE","#2980b9") })
+  output$tp_card_de      <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(fmt_num(d$adj_de[1],1),"Adj. DE","#8e44ad") })
 
   output$tp_ff_plot <- renderPlot({
-    ff_raw <- tryCatch(
-      torvik_four_factors(year=as.integer(input$tp_year), conf="All") |>
-        filter(team == input$tp_team),
-      error=function(e) NULL
-    )
+    ff_raw <- rv$tp_ff
     req(!is.null(ff_raw), nrow(ff_raw)>0)
     factors <- tibble(
       Factor = c("eFG% Off","eFG% Def","TO% Off","TO% Def","OReb%","DReb%","FTR Off","FTR Def"),
@@ -915,12 +994,12 @@ server <- function(input, output, session) {
     tibble(
       Metric = c("T-Rank","Record","Adj. OE","Adj. DE","Barthag %","Adj. Tempo",
                  "WAB","Proj W","Proj L","SOS"),
-      Value  = c(as.character(d$rank[1]), d$record[1],
-                 sprintf("%.1f", d$adj_oe[1]), sprintf("%.1f", d$adj_de[1]),
-                 sprintf("%.1f%%", d$barthag[1]*100), sprintf("%.1f", d$adj_tempo[1]),
-                 sprintf("%.1f", d$wab[1]),
-                 sprintf("%.1f", d$proj_w[1]), sprintf("%.1f", d$proj_l[1]),
-                 sprintf("%.3f", d$sos[1]))
+      Value  = c(fmt_chr(d$rank[1]), fmt_chr(d$record[1]),
+                 fmt_num(d$adj_oe[1],1), fmt_num(d$adj_de[1],1),
+                 fmt_num(d$barthag[1]*100,1,"%"), fmt_num(d$adj_tempo[1],1),
+                 fmt_num(d$wab[1],1),
+                 fmt_num(d$proj_w[1],1), fmt_num(d$proj_l[1],1),
+                 fmt_num(d$sos[1],3))
     )
   }, striped=TRUE, hover=TRUE)
 
@@ -960,31 +1039,39 @@ server <- function(input, output, session) {
 
   output$player_profile_panel <- renderUI({
     p <- selected_player()
-    if (is.null(p)) return(NULL)
+    if (is.null(p) || nrow(p) == 0) {
+      return(div(
+        style="background:#eef2f6; border-radius:10px; padding:14px 16px; margin-bottom:18px;
+               color:#6c757d; font-size:0.9em; text-align:center;",
+        tags$i(class="fas fa-hand-pointer", style="margin-right:6px;"),
+        "Click any player row in the table below to see their full profile here."
+      ))
+    }
     logo_url <- get_logo_url(p$team[1])
     div(
       style="background:#f8f9fa; border-radius:10px; padding:16px; margin-bottom:18px; border-left:4px solid #1a3a5c;",
-      div(style="display:flex; align-items:center; gap:14px; margin-bottom:12px;",
+      div(style="display:flex; align-items:center; gap:14px; margin-bottom:14px;",
         if (!is.na(logo_url)) tags$img(src=logo_url, height="44px"),
         div(
-          h4(p$player_name[1], style="margin:0; color:#1a3a5c; font-weight:700;"),
-          p(paste0(p$team[1]," · ",p$conf[1]," · ",p$yr[1]," · Ht: ",p$ht[1]),
-            style="margin:0; color:#6c757d; font-size:0.88em;")
+          h4(fmt_chr(p$player_name[1]), style="margin:0; color:#1a3a5c; font-weight:700;"),
+          div(paste0(fmt_chr(p$team[1])," · ",fmt_chr(p$conf[1]),
+                     " · ",fmt_chr(p$yr[1])," · Ht: ",fmt_chr(p$ht[1])),
+              style="color:#6c757d; font-size:0.88em;")
         )
       ),
-      layout_columns(col_widths=c(2,2,2,2,2,2),
-        stat_card(p$GP[1],    "GP"),
-        stat_card(paste0(round(as.numeric(p$ORtg[1]),0)), "ORtg",    "#2980b9"),
-        stat_card(paste0(round(as.numeric(p$usg[1]),1),"%"), "Usage", "#e07b24"),
-        stat_card(paste0(round(as.numeric(p$eFG[1]),1),"%"), "eFG%",  "#27ae60"),
-        stat_card(round(as.numeric(p$gbpm[1]),1), "BPM 2.0", "#8e44ad"),
-        stat_card(p$pts[1],   "PTS",     "#c0392b")
+      layout_columns(col_widths=c(2,2,2,2,2,2), gap="8px",
+        stat_card(fmt_num(p$GP[1],0),            "GP"),
+        stat_card(fmt_num(p$ORtg[1],0),          "ORtg",    "#2980b9"),
+        stat_card(fmt_num(p$usg[1],1,"%"),       "Usage",   "#e07b24"),
+        stat_card(fmt_num(p$eFG[1],1,"%"),       "eFG%",    "#27ae60"),
+        stat_card(fmt_num(p$gbpm[1],1),          "BPM 2.0", "#8e44ad"),
+        stat_card(fmt_num(p$pts[1],0),           "PTS",     "#c0392b")
       ),
-      layout_columns(col_widths=c(3,3,3,3),
-        stat_card(paste0(round(as.numeric(p$ORB_pct[1]),1),"%"), "OReb%"),
-        stat_card(paste0(round(as.numeric(p$AST_pct[1]),1),"%"), "Ast%"),
-        stat_card(paste0(round(as.numeric(p$TO_pct[1]),1),"%"),  "TO%"),
-        stat_card(paste0(round(as.numeric(p$stl_pct[1]),1),"%"), "Stl%")
+      layout_columns(col_widths=c(3,3,3,3), gap="8px",
+        stat_card(fmt_num(p$ORB_pct[1],1,"%"),   "OReb%"),
+        stat_card(fmt_num(p$AST_pct[1],1,"%"),   "Ast%"),
+        stat_card(fmt_num(p$TO_pct[1],1,"%"),    "TO%"),
+        stat_card(fmt_num(p$stl_pct[1],1,"%"),   "Stl%")
       )
     )
   })
@@ -1045,7 +1132,7 @@ server <- function(input, output, session) {
       Recruit_TRank="Recruit Rk"
     )
     datatable(
-      d[, keep], colnames=lbl_map[keep], rownames=FALSE, filter="top",
+      d[, keep], colnames=unname(lbl_map[keep]), rownames=FALSE, filter="top",
       selection="single",
       options=list(pageLength=25, dom="frtip", scrollX=TRUE,
                    columnDefs=list(list(
@@ -1070,19 +1157,26 @@ server <- function(input, output, session) {
   })
 
   # ── Team Resume ───────────────────────────────────────────────────────────
-  observeEvent(input$load_res_teams, {
+  load_res_teams <- function() {
     withProgress(message="Loading team list...", {
       rv$res_teams <- tryCatch(
         torvik_team_ratings(year=as.integer(input$res_year), conf="All"),
         error=function(e) { showNotification(paste("Error:", e$message), type="error"); NULL }
       )
     })
-  }, ignoreNULL=TRUE, ignoreInit=TRUE)
+  }
+  observeEvent(input$load_res_teams, load_res_teams(), ignoreNULL=TRUE, ignoreInit=TRUE)
+  observeEvent(input$main_nav, {
+    if (identical(input$main_nav, "resume") && is.null(rv$res_teams)) load_res_teams()
+  }, ignoreInit=TRUE)
+  observeEvent(input$res_year, {
+    if (identical(input$main_nav, "resume")) load_res_teams()
+  }, ignoreInit=TRUE)
 
   output$res_team_ui <- renderUI({
     d <- rv$res_teams
     if (is.null(d)||nrow(d)==0)
-      selectInput("res_team","Team (load teams first)",choices=character(0))
+      selectInput("res_team","Team (loading…)",choices=character(0))
     else
       selectInput("res_team","Team",choices=sort(unique(d$team)),selectize=TRUE)
   })
@@ -1188,7 +1282,7 @@ server <- function(input, output, session) {
     d2 <- d[!is.na(d$wp), ]
     x_col <- if (!all(is.na(d2$gv))) "gv" else "ttq_num"
     x_lbl <- if (x_col == "gv") "Game Value" else "TTQ"
-    ggplot(d2, aes_string(x=x_col, y="wp", color="ttq_num")) +
+    ggplot(d2, aes(x=.data[[x_col]], y=.data[["wp"]], color=.data[["ttq_num"]])) +
       geom_point(alpha=0.5, size=1.8) +
       scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="TTQ", na.value="grey70") +
       geom_hline(yintercept=50, linetype="dashed", color="grey50") +
@@ -1220,7 +1314,7 @@ server <- function(input, output, session) {
     for (col in num_cols) d2[[col]] <- suppressWarnings(as.numeric(d2[[col]]))
     ttq_idx <- which(show == "ttq") - 1L
     datatable(
-      d2, colnames=col_labels[show], rownames=FALSE, filter="top",
+      d2, colnames=unname(col_labels[show]), rownames=FALSE, filter="top",
       options=list(pageLength=30, dom="frtip", scrollX=TRUE,
                    order=list(list(ttq_idx, "desc"))),
       class="stripe hover compact"
