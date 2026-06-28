@@ -66,7 +66,7 @@ get_super_sked <- function(
     "tpro", "t1qual", "t2qual", "gp", "result", "tempo",
     "possessions", "t1pts", "t2pts", "winner", "loser",
     "t1adjt", "t2adjt", "t1adjo", "t1adjd", "t2adjo", "t2adjd",
-    "gamevalue", "mistmach", "blowout", "t1elite", "t2elite",
+    "gamevalue", "mismatch", "blowout", "t1elite", "t2elite",
     "ord_date", "t1ppp", "t2ppp", "gameppp",
     "t1rk", "t2rk", "t1gs", "t2gs", "gamestats",
     "overtimes", "t1fun", "t2fun", "results"

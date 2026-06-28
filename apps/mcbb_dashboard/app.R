@@ -978,7 +978,7 @@ server <- function(input, output, session) {
         stat_card(paste0(round(as.numeric(p$ORtg[1]),0)), "ORtg",    "#2980b9"),
         stat_card(paste0(round(as.numeric(p$usg[1]),1),"%"), "Usage", "#e07b24"),
         stat_card(paste0(round(as.numeric(p$eFG[1]),1),"%"), "eFG%",  "#27ae60"),
-        stat_card(round(as.numeric(p$bpm[1]),1),  "BPM",     "#8e44ad"),
+        stat_card(round(as.numeric(p$gbpm[1]),1), "BPM 2.0", "#8e44ad"),
         stat_card(p$pts[1],   "PTS",     "#c0392b")
       ),
       layout_columns(col_widths=c(3,3,3,3),
@@ -1021,21 +1021,53 @@ server <- function(input, output, session) {
 
   output$pl_table <- renderDT({
     d <- pl_filtered(); req(nrow(d)>0)
-    keep <- c("player_name","team","conf","GP","yr","ht",
-              "ORtg","usg","eFG","TS_pct","bpm","obpm","dbpm",
+    # Column definitions per barttorvik data dictionary:
+    # Min_pct  = % of available team minutes (team_min / 5)
+    # gbpm     = BPM 2.0 (revised box plus-minus, better for small samples)
+    # bpm      = original BPM formula
+    # obpm/dbpm = offensive/defensive BPM
+    # rimmade  = rim shots made; midmade = mid-range two-pointers made
+    # rim_pct / mid_pct = shooting % from rim / mid-range
+    keep <- c("player_name","team","conf","GP","yr","ht","Min_pct",
+              "ORtg","usg","eFG","TS_pct",
+              "gbpm","bpm","obpm","dbpm",
               "ORB_pct","DRB_pct","AST_pct","TO_pct","stl_pct","blk_pct",
-              "pts","ast","treb","stl","blk")
+              "rim_pct","mid_pct","TP_pct",
+              "pts","ast","treb","stl","blk","Recruit_TRank")
     keep <- intersect(keep, names(d))
-    col_lbls <- c("Player","Team","Conf","GP","Yr","Ht",
-                  "ORtg","Usg%","eFG%","TS%","BPM","OBPM","DBPM",
-                  "OReb%","DReb%","Ast%","TO%","Stl%","Blk%",
-                  "PTS","AST","REB","STL","BLK")[seq_len(length(keep))]
-    datatable(
-      d[, keep], colnames=col_lbls, rownames=FALSE, filter="top",
-      selection="single",
-      options=list(pageLength=25, dom="frtip", scrollX=TRUE),
-      class="stripe hover compact"
+    lbl_map <- c(
+      player_name="Player", team="Team", conf="Conf", GP="GP", yr="Yr", ht="Ht",
+      Min_pct="Min%", ORtg="ORtg", usg="Usg%", eFG="eFG%", TS_pct="TS%",
+      gbpm="BPM 2.0", bpm="BPM", obpm="OBPM", dbpm="DBPM",
+      ORB_pct="OReb%", DRB_pct="DReb%", AST_pct="Ast%", TO_pct="TO%",
+      stl_pct="Stl%", blk_pct="Blk%",
+      rim_pct="Rim%", mid_pct="Mid%", TP_pct="3P%",
+      pts="PTS", ast="AST", treb="REB", stl="STL", blk="BLK",
+      Recruit_TRank="Recruit Rk"
     )
+    datatable(
+      d[, keep], colnames=lbl_map[keep], rownames=FALSE, filter="top",
+      selection="single",
+      options=list(pageLength=25, dom="frtip", scrollX=TRUE,
+                   columnDefs=list(list(
+                     render=JS("function(data, type, row, meta) {
+                       if (type === 'display' && data !== null && !isNaN(parseFloat(data))) {
+                         return parseFloat(data).toFixed(1);
+                       } return data;
+                     }"),
+                     targets=which(keep %in% c("gbpm","bpm","obpm","dbpm","ORtg","usg",
+                                               "eFG","TS_pct","ORB_pct","DRB_pct",
+                                               "AST_pct","TO_pct","stl_pct","blk_pct",
+                                               "rim_pct","mid_pct","TP_pct","Min_pct")) - 1L
+                   ))),
+      class="stripe hover compact"
+    ) |>
+      formatStyle("gbpm",
+        background=styleColorBar(c(-5,10),"#d5f4e6"),
+        backgroundSize="100% 70%", backgroundRepeat="no-repeat", backgroundPosition="center") |>
+      formatStyle("ORtg",
+        background=styleColorBar(c(80,130),"#cce5ff"),
+        backgroundSize="100% 70%", backgroundRepeat="no-repeat", backgroundPosition="center")
   })
 
   # ── Team Resume ───────────────────────────────────────────────────────────
@@ -1129,42 +1161,78 @@ server <- function(input, output, session) {
 
   output$ss_ttq_plot <- renderPlot({
     d <- ss_data()
-    ttq_col <- intersect(c("ttq","TTQ"),names(d))[1]
-    mu_col  <- intersect(c("matchup","Matchup","muid"),names(d))[1]
-    req(!is.na(ttq_col))
-    d$ttq_val <- as.numeric(d[[ttq_col]])
-    d$label   <- if(!is.na(mu_col)) d[[mu_col]] else seq_len(nrow(d))
-    top25 <- d[order(-d$ttq_val),][seq_len(min(25,nrow(d))),]
-    ggplot(top25, aes(x=reorder(label,ttq_val),y=ttq_val,fill=ttq_val)) +
+    req("ttq" %in% names(d), "matchup" %in% names(d))
+    d$ttq_val <- as.numeric(d$ttq)
+    d2 <- d[!is.na(d$ttq_val) & d$ttq_val > 0, ]
+    top25 <- d2[order(-d2$ttq_val), ][seq_len(min(25, nrow(d2))), ]
+    top25$label <- if (all(c("t1rk","t2rk") %in% names(top25))) {
+      paste0(top25$matchup, "  (#", top25$t1rk, " vs #", top25$t2rk, ")")
+    } else top25$matchup
+    ggplot(top25, aes(x=reorder(label, ttq_val), y=ttq_val, fill=ttq_val)) +
       geom_col(width=0.7) +
-      scale_fill_gradient(low="#d4e6f1",high="#1a3a5c",guide="none") +
-      coord_flip() +
-      labs(title="Top 25 Games by Quality (TTQ)",x=NULL,y="Torvik Tier Quality") +
-      theme_minimal(base_size=10) + theme(axis.text.y=element_text(size=8))
+      geom_text(aes(label=round(ttq_val,1)), hjust=-0.1, size=3) +
+      scale_fill_gradient(low="#d4e6f1", high="#1a3a5c", guide="none") +
+      coord_flip(clip="off") +
+      labs(title="Top 25 Games by Torvik Thrill Quotient (TTQ)",
+           subtitle="Higher = better quality matchup", x=NULL, y="TTQ") +
+      theme_minimal(base_size=10) +
+      theme(axis.text.y=element_text(size=8), plot.margin=margin(r=30))
   })
 
   output$ss_line_plot <- renderPlot({
     d <- ss_data()
-    line_col <- intersect(c("line","Line","predicted_score"),names(d))[1]
-    wp_col   <- intersect(c("pctChanceWin","t1wp","WinProb"),names(d))[1]
-    req(!is.na(line_col),!is.na(wp_col))
-    d$line_val <- as.numeric(d[[line_col]])
-    d$wp_val   <- as.numeric(d[[wp_col]])
-    d2 <- d[!is.na(d$line_val)&!is.na(d$wp_val),]
-    ggplot(d2, aes(x=line_val,y=wp_val)) +
-      geom_point(alpha=0.45,size=1.8,color="#1a3a5c") +
-      geom_vline(xintercept=0,linetype="dashed",color="grey50") +
-      geom_hline(yintercept=50,linetype="dashed",color="grey50") +
-      labs(title="Predicted Line vs. Win Probability",
-           x="Predicted Spread",y="Win Probability (%)") +
+    # t1wp is the direct win probability column per the data dictionary
+    req("t1wp" %in% names(d))
+    d$wp  <- suppressWarnings(as.numeric(d$t1wp))
+    d$gv  <- if ("gamevalue" %in% names(d)) suppressWarnings(as.numeric(d$gamevalue)) else NA_real_
+    d$ttq_num <- suppressWarnings(as.numeric(d$ttq))
+    d2 <- d[!is.na(d$wp), ]
+    x_col <- if (!all(is.na(d2$gv))) "gv" else "ttq_num"
+    x_lbl <- if (x_col == "gv") "Game Value" else "TTQ"
+    ggplot(d2, aes_string(x=x_col, y="wp", color="ttq_num")) +
+      geom_point(alpha=0.5, size=1.8) +
+      scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="TTQ", na.value="grey70") +
+      geom_hline(yintercept=50, linetype="dashed", color="grey50") +
+      labs(title="Game Value vs. Team 1 Win Probability",
+           subtitle="t1wp = Team 1 win probability (%) · higher gamevalue = more meaningful game",
+           x=x_lbl, y="Team 1 Win Prob (%)") +
       theme_minimal(base_size=11)
   })
 
   output$ss_table <- renderDT({
     d <- ss_data()
-    datatable(d, rownames=FALSE, filter="top",
-              options=list(pageLength=30,dom="frtip",scrollX=TRUE),
-              class="stripe hover compact")
+    key_cols <- c("Date","matchup","ttq","team1","t1rk","t1oe","t1de","t1wp",
+                  "team2","t2rk","t2oe","t2de","t2wp",
+                  "t1pts","t2pts","result","confmatch","venue",
+                  "gamevalue","mismatch","blowout","tempo","overtimes")
+    show <- intersect(key_cols, names(d))
+    col_labels <- c(
+      Date="Date", matchup="Matchup", ttq="TTQ",
+      team1="Team 1", t1rk="T1 Rk", t1oe="T1 AdjO", t1de="T1 AdjD", t1wp="T1 Win%",
+      team2="Team 2", t2rk="T2 Rk", t2oe="T2 AdjO", t2de="T2 AdjD", t2wp="T2 Win%",
+      t1pts="T1 Pts", t2pts="T2 Pts", result="Result", confmatch="Conf?",
+      venue="Venue", gamevalue="Game Val", mismatch="Mismatch",
+      blowout="Blowout", tempo="Tempo", overtimes="OT"
+    )
+    d2 <- d[, show]
+    num_cols <- intersect(c("ttq","t1rk","t2rk","t1oe","t1de","t1wp",
+                            "t2oe","t2de","t2wp","t1pts","t2pts",
+                            "gamevalue","mismatch","blowout","tempo","overtimes"), show)
+    for (col in num_cols) d2[[col]] <- suppressWarnings(as.numeric(d2[[col]]))
+    ttq_idx <- which(show == "ttq") - 1L
+    datatable(
+      d2, colnames=col_labels[show], rownames=FALSE, filter="top",
+      options=list(pageLength=30, dom="frtip", scrollX=TRUE,
+                   order=list(list(ttq_idx, "desc"))),
+      class="stripe hover compact"
+    ) |>
+      formatRound(intersect(c("ttq","t1oe","t1de","t2oe","t2de","gamevalue","tempo"), show), 1) |>
+      formatStyle("t1wp",
+        background=styleColorBar(c(0,100), "#cce5ff"),
+        backgroundSize="100% 70%", backgroundRepeat="no-repeat", backgroundPosition="center") |>
+      formatStyle("t2wp",
+        background=styleColorBar(c(0,100), "#fdebd0"),
+        backgroundSize="100% 70%", backgroundRepeat="no-repeat", backgroundPosition="center")
   })
 
   # ── Time Machine ──────────────────────────────────────────────────────────
