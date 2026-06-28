@@ -152,30 +152,34 @@ fmt_chr <- function(x) {
 }
 
 # ── Card layout helpers ─────────────────────────────────────────────────────────
-# Every plot / table lives in a full-screen-able bslib card so a cramped chart
-# can always be expanded to the full viewport.
-plot_card <- function(title, id, min_h = 400, sub = NULL) {
+# The page is a normal scrolling document (page_navbar fillable = FALSE), so each
+# plot card gets an explicit fixed height. plotOutput(height="100%") then fills
+# that height in normal flow AND fills the viewport when the card is expanded
+# via its full-screen button.
+plot_card <- function(title, id, h = 420, sub = NULL) {
   card(
     full_screen = TRUE,
-    min_height  = min_h,
+    height      = paste0(h, "px"),
     card_header(title, class = "d-flex align-items-center"),
     if (!is.null(sub)) div(class = "card-sub", sub),
-    plotOutput(id, height = "100%")
+    card_body(plotOutput(id, height = "100%"), padding = 10)
   )
 }
 
+# Tables flow at their natural height (DT paginates internally) so the page
+# scrolls rather than cramming everything into the viewport.
 table_card <- function(title, id, sub = NULL) {
   card(
     full_screen = TRUE,
     card_header(title),
     if (!is.null(sub)) div(class = "card-sub", sub),
-    DTOutput(id)
+    card_body(DTOutput(id), fill = FALSE)
   )
 }
 
 # Responsive row of stat-card uiOutputs (reflows to 2 cols, then 1, when narrow).
 cards_row <- function(...) {
-  layout_column_wrap(width = 1/4, gap = "10px", heights_equal = "row", ...)
+  layout_column_wrap(width = 1/4, gap = "10px", fill = FALSE, ...)
 }
 
 # ── UI ────────────────────────────────────────────────────────────────────────
@@ -184,8 +188,9 @@ ui <- page_navbar(
     tags$i(class = "fas fa-basketball-ball", style = "color:#e07b24; margin-right:8px;"),
     "MCBB Advanced Stats"
   ),
-  theme  = app_theme,
-  id     = "main_nav",
+  theme    = app_theme,
+  id       = "main_nav",
+  fillable = FALSE,   # normal scrolling document instead of a fixed-height grid
   header = tagList(
     tags$head(
       tags$link(rel = "stylesheet",
@@ -235,7 +240,7 @@ ui <- page_navbar(
         uiOutput("rank_card_1"), uiOutput("rank_card_2"),
         uiOutput("rank_card_3"), uiOutput("rank_card_4")
       ),
-      plot_card("Offense vs. Defense Landscape", "rank_scatter", min_h = 520,
+      plot_card("Offense vs. Defense Landscape", "rank_scatter", h = 520,
                 sub = "Down-right = elite two-way. Click the expand icon (top-right) for full screen."),
       table_card("Rankings Table", "rankings_table")
     )
@@ -252,10 +257,10 @@ ui <- page_navbar(
         hr(),
         actionButton("load_conf", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      plot_card("Conference Strength (Avg. Barthag)", "conf_barthag_plot", min_h = 440),
+      plot_card("Conference Strength (Avg. Barthag)", "conf_barthag_plot", h = 440),
       layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
-        plot_card("Offense vs. Defense by Conference", "conf_oe_de_plot", min_h = 380),
-        plot_card("Pace by Conference", "conf_tempo_plot", min_h = 380)
+        plot_card("Offense vs. Defense by Conference", "conf_oe_de_plot", h = 380),
+        plot_card("Pace by Conference", "conf_tempo_plot", h = 380)
       ),
       table_card("Conference Summary Table", "conf_table")
     )
@@ -284,7 +289,7 @@ ui <- page_navbar(
         hr(),
         actionButton("load_ff", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      plot_card("Four Factors Scatter", "ff_scatter", min_h = 540,
+      plot_card("Four Factors Scatter", "ff_scatter", h = 540,
                 sub = "Pick the X and Y metrics in the sidebar. Toggle point labels there too."),
       table_card("Four Factors Table", "ff_table",
                  sub = "eFG%, TO%, Reb%, FT Rate shown as percentages.")
@@ -303,10 +308,10 @@ ui <- page_navbar(
         hr(),
         actionButton("load_sh", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      plot_card("Shot Distribution — avg 2P vs 3P attempt share", "sh_zone_dist", min_h = 300),
+      plot_card("Shot Distribution — avg 2P vs 3P attempt share", "sh_zone_dist", h = 300),
       layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
-        plot_card("Two-Point FG% (Top 20)", "sh_rim_plot", min_h = 420),
-        plot_card("Three-Point Rate (Top 20)", "sh_three_plot", min_h = 420)
+        plot_card("Two-Point FG% (Top 20)", "sh_rim_plot", h = 420),
+        plot_card("Three-Point Rate (Top 20)", "sh_three_plot", h = 420)
       ),
       table_card("Full Shooting Table", "sh_table",
                  sub = "All pct and rate values shown as percentages (e.g. 64.2 = 64.2%).")
@@ -325,7 +330,7 @@ ui <- page_navbar(
         actionButton("load_today", "Refresh Slate", class = "btn-primary w-100", icon = icon("rotate"))
       ),
       table_card("Games on Today's Board", "today_table"),
-      plot_card("Game Quality (TTQ)", "today_plot", min_h = 400)
+      plot_card("Game Quality (TTQ)", "today_plot", h = 400)
     )
   ),
 
@@ -347,8 +352,8 @@ ui <- page_navbar(
         uiOutput("tp_card_oe"),   uiOutput("tp_card_de")
       ),
       layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
-        plot_card("Four Factors (Offense vs. Defense)", "tp_ff_plot", min_h = 360),
-        plot_card("Shooting Profile (Offense vs. Defense)", "tp_shot_plot", min_h = 360)
+        plot_card("Four Factors (Offense vs. Defense)", "tp_ff_plot", h = 360),
+        plot_card("Shooting Profile (Offense vs. Defense)", "tp_shot_plot", h = 360)
       ),
       card(full_screen = TRUE, card_header("Season Stats Summary"),
            tableOutput("tp_stats_table")),
@@ -371,8 +376,8 @@ ui <- page_navbar(
       ),
       uiOutput("player_profile_panel"),
       layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
-        plot_card("Top 25 by BPM 2.0", "pl_bpm_plot", min_h = 440),
-        plot_card("Usage vs. Offensive Rating", "pl_ortg_plot", min_h = 440)
+        plot_card("Top 25 by BPM 2.0", "pl_bpm_plot", h = 440),
+        plot_card("Usage vs. Offensive Rating", "pl_ortg_plot", h = 440)
       ),
       table_card("Player Table — click a row to view a full profile", "pl_table")
     )
@@ -396,7 +401,7 @@ ui <- page_navbar(
         uiOutput("res_card_w"), uiOutput("res_card_l"),
         uiOutput("res_card_adjoe"), uiOutput("res_card_adjde")
       ),
-      plot_card("Adj. Offensive Efficiency by Game", "res_result_plot", min_h = 380),
+      plot_card("Adj. Offensive Efficiency by Game", "res_result_plot", h = 380),
       table_card("Game Log", "res_table")
     )
   ),
@@ -414,8 +419,8 @@ ui <- page_navbar(
         actionButton("load_ss", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
       layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
-        plot_card("Top Games by Quality (TTQ)", "ss_ttq_plot", min_h = 420),
-        plot_card("Spread vs. Win Probability", "ss_line_plot", min_h = 420)
+        plot_card("Top Games by Quality (TTQ)", "ss_ttq_plot", h = 420),
+        plot_card("Spread vs. Win Probability", "ss_line_plot", h = 420)
       ),
       table_card("Full Schedule", "ss_table")
     )
@@ -440,7 +445,7 @@ ui <- page_navbar(
         uiOutput("tm_card_1"), uiOutput("tm_card_2"),
         uiOutput("tm_card_3"), uiOutput("tm_card_4")
       ),
-      plot_card("Barthag Power Rating", "tm_barthag_plot", min_h = 440),
+      plot_card("Barthag Power Rating", "tm_barthag_plot", h = 440),
       table_card("Full Snapshot Table", "tm_table")
     )
   )
