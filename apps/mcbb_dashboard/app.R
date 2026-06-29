@@ -13,6 +13,9 @@ library(dplyr)
 library(tidyr)
 library(scales)
 
+have_plotly <- requireNamespace("plotly", quietly = TRUE)
+if (have_plotly) library(plotly)
+
 if (!requireNamespace("konenMCBB", quietly = TRUE)) {
   devtools::load_all(normalizePath(file.path("..", ".."), mustWork = TRUE))
 } else {
@@ -151,6 +154,19 @@ fmt_chr <- function(x) {
   as.character(x)
 }
 
+# Torvik CSVs carry latin1-encoded bytes in names (often flagged "unknown"),
+# which plotly's JSON serializer rejects as invalid UTF-8. Treat the bytes as
+# latin1 and transcode to UTF-8 so accented names render correctly.
+clean_utf8 <- function(x) {
+  x <- as.character(x)
+  Encoding(x) <- "latin1"
+  iconv(x, "latin1", "UTF-8", sub = "")
+}
+
+# Mark a fully-assembled string (cleaned names + unicode literals like ·/→) as
+# UTF-8 so plotly doesn't choke on the "unknown"-encoded concatenation.
+hov <- function(...) enc2utf8(paste0(...))
+
 # ── Card layout helpers ─────────────────────────────────────────────────────────
 # The page is a normal scrolling document (page_navbar fillable = FALSE), so each
 # plot card gets an explicit fixed height. plotOutput(height="100%") then fills
@@ -163,6 +179,19 @@ plot_card <- function(title, id, h = 420, sub = NULL) {
     card_header(title, class = "d-flex align-items-center"),
     if (!is.null(sub)) div(class = "card-sub", sub),
     card_body(plotOutput(id, height = "100%"), padding = 10)
+  )
+}
+
+# Interactive (plotly) card — hover tooltips, zoom, pan. Falls back to a static
+# plotOutput when plotly isn't installed.
+iplot_card <- function(title, id, h = 420, sub = NULL) {
+  body <- if (have_plotly) plotly::plotlyOutput(id, height = "100%") else plotOutput(id, height = "100%")
+  card(
+    full_screen = TRUE,
+    height      = paste0(h, "px"),
+    card_header(title, class = "d-flex align-items-center"),
+    if (!is.null(sub)) div(class = "card-sub", sub),
+    card_body(body, padding = 10)
   )
 }
 
@@ -240,8 +269,8 @@ ui <- page_navbar(
         uiOutput("rank_card_1"), uiOutput("rank_card_2"),
         uiOutput("rank_card_3"), uiOutput("rank_card_4")
       ),
-      plot_card("Offense vs. Defense Landscape", "rank_scatter", h = 520,
-                sub = "Down-right = elite two-way. Click the expand icon (top-right) for full screen."),
+      iplot_card("Offense vs. Defense Landscape", "rank_scatter", h = 520,
+                sub = "Hover any point for the team & ratings · scroll to zoom · drag to pan."),
       table_card("Rankings Table", "rankings_table")
     )
   ),
@@ -259,7 +288,7 @@ ui <- page_navbar(
       ),
       plot_card("Conference Strength (Avg. Barthag)", "conf_barthag_plot", h = 440),
       layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
-        plot_card("Offense vs. Defense by Conference", "conf_oe_de_plot", h = 380),
+        iplot_card("Offense vs. Defense by Conference", "conf_oe_de_plot", h = 380),
         plot_card("Pace by Conference", "conf_tempo_plot", h = 380)
       ),
       table_card("Conference Summary Table", "conf_table")
@@ -289,8 +318,8 @@ ui <- page_navbar(
         hr(),
         actionButton("load_ff", "Load / Refresh", class = "btn-primary w-100", icon = icon("rotate"))
       ),
-      plot_card("Four Factors Scatter", "ff_scatter", h = 540,
-                sub = "Pick the X and Y metrics in the sidebar. Toggle point labels there too."),
+      iplot_card("Four Factors Scatter", "ff_scatter", h = 540,
+                sub = "Pick the X and Y metrics in the sidebar · hover any point for the team."),
       table_card("Four Factors Table", "ff_table",
                  sub = "eFG%, TO%, Reb%, FT Rate shown as percentages.")
     )
@@ -352,7 +381,8 @@ ui <- page_navbar(
         uiOutput("tp_card_oe"),   uiOutput("tp_card_de")
       ),
       layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
-        plot_card("Four Factors (Offense vs. Defense)", "tp_ff_plot", h = 360),
+        iplot_card("Four Factors — National Percentiles", "tp_ff_plot", h = 360,
+                   sub = "Each axis 0–100; further out = better nationally."),
         plot_card("Shooting Profile (Offense vs. Defense)", "tp_shot_plot", h = 360)
       ),
       card(full_screen = TRUE, card_header("Season Stats Summary"),
@@ -377,7 +407,7 @@ ui <- page_navbar(
       uiOutput("player_profile_panel"),
       layout_column_wrap(width = 1/2, gap = "12px", heights_equal = "row",
         plot_card("Top 25 by BPM 2.0", "pl_bpm_plot", h = 440),
-        plot_card("Usage vs. Offensive Rating", "pl_ortg_plot", h = 440)
+        iplot_card("Usage vs. Offensive Rating", "pl_ortg_plot", h = 440)
       ),
       table_card("Player Table — click a row to view a full profile", "pl_table")
     )
@@ -466,6 +496,7 @@ server <- function(input, output, session) {
     tp_games    = NULL,
     tp_shooting = NULL,
     tp_ff       = NULL,
+    tp_ff_all   = NULL,
     res_teams   = NULL,
     resume      = NULL,
     supersked   = NULL,
@@ -546,38 +577,52 @@ server <- function(input, output, session) {
                   backgroundSize="100% 70%", backgroundRepeat="no-repeat", backgroundPosition="center")
   })
 
-  output$rank_scatter <- renderPlot({
-    d <- rank_data()
-    req(nrow(d) > 0)
-    # Only label the strongest teams so dense slates stay readable.
-    n_lab  <- min(25, nrow(d))
-    d_lab  <- d |> arrange(desc(barthag)) |> head(n_lab)
-    p <- ggplot(d, aes(x=adj_oe, y=adj_de, size=barthag, color=barthag)) +
-      geom_point(alpha=0.7) +
-      scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="Barthag") +
-      scale_size_continuous(range=c(2,8), guide="none") +
-      scale_y_reverse() +
-      geom_hline(yintercept=mean(d$adj_de, na.rm=TRUE), linetype="dashed", color="grey55", linewidth=0.4) +
-      geom_vline(xintercept=mean(d$adj_oe, na.rm=TRUE), linetype="dashed", color="grey55", linewidth=0.4) +
-      labs(title="Adjusted Offense vs. Defense  (bubble & color = Barthag)",
-           subtitle=paste0("Down-right = elite two-way · labels = top ", n_lab, " by Barthag"),
-           x="Adj. Offensive Efficiency  →  better",
-           y="Adj. Defensive Efficiency  →  better (axis reversed)") +
-      theme_minimal(base_size=12) +
-      theme(legend.position="right",
-            plot.subtitle=element_text(color="grey45", size=10))
-
-    if (have_ggrepel) {
-      p <- p + ggrepel::geom_text_repel(
-        data=d_lab, aes(label=team), size=3, color="#222",
-        max.overlaps=Inf, min.segment.length=0, segment.color="grey70",
-        box.padding=0.4, point.padding=0.2, seed=1)
-    } else {
-      p <- p + geom_text(data=d_lab, aes(label=team), size=2.6,
-                         vjust=-0.8, check_overlap=TRUE, color="#222")
-    }
-    p
-  })
+  if (have_plotly) {
+    output$rank_scatter <- plotly::renderPlotly({
+      d <- rank_data(); req(nrow(d) > 0)
+      mu_oe <- mean(d$adj_oe, na.rm=TRUE); mu_de <- mean(d$adj_de, na.rm=TRUE)
+      pdat <- data.frame(
+        adj_oe=d$adj_oe, adj_de=d$adj_de, barthag=d$barthag,
+        sz=scales::rescale(d$barthag, to=c(6,22)),
+        tip=hov("<b>", clean_utf8(d$team), "</b>  (#", d$rank, ")<br>",
+                clean_utf8(d$conf), " · ", d$record, "<br>",
+                "Adj OE: ", round(d$adj_oe,1), "  ·  Adj DE: ", round(d$adj_de,1), "<br>",
+                "Barthag: ", round(d$barthag*100,1), "%"),
+        stringsAsFactors=FALSE
+      )
+      plotly::plot_ly(
+        pdat, x=~adj_oe, y=~adj_de, type="scatter", mode="markers",
+        marker=list(size=~sz,
+                    color=~barthag, colorscale=list(c(0,"#aed6f1"),c(1,"#1a3a5c")),
+                    line=list(width=0.5, color="white"), showscale=TRUE,
+                    colorbar=list(title="Barthag")),
+        text=~tip, hoverinfo="text"
+      ) |>
+        plotly::layout(
+          xaxis=list(title="Adj. Offensive Efficiency  →  better", zeroline=FALSE),
+          yaxis=list(title="Adj. Defensive Efficiency  →  better", autorange="reversed", zeroline=FALSE),
+          shapes=list(
+            list(type="line", x0=mu_oe, x1=mu_oe, yref="paper", y0=0, y1=1,
+                 line=list(dash="dash", color="grey", width=1)),
+            list(type="line", y0=mu_de, y1=mu_de, xref="paper", x0=0, x1=1,
+                 line=list(dash="dash", color="grey", width=1))
+          ),
+          margin=list(l=60,r=20,t=20,b=50)
+        ) |>
+        plotly::config(displayModeBar=TRUE, displaylogo=FALSE,
+                       modeBarButtonsToRemove=c("select2d","lasso2d","autoScale2d"))
+    })
+  } else {
+    output$rank_scatter <- renderPlot({
+      d <- rank_data(); req(nrow(d) > 0)
+      ggplot(d, aes(x=adj_oe, y=adj_de, size=barthag, color=barthag)) +
+        geom_point(alpha=0.7) +
+        scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="Barthag") +
+        scale_size_continuous(range=c(2,8), guide="none") + scale_y_reverse() +
+        labs(x="Adj. Offensive Efficiency", y="Adj. Defensive Efficiency (reversed)") +
+        theme_minimal(base_size=12)
+    })
+  }
 
   # ── Conference ────────────────────────────────────────────────────────────
   observeEvent(input$load_conf, {
@@ -605,19 +650,40 @@ server <- function(input, output, session) {
       theme(plot.margin=margin(r=90))
   })
 
-  output$conf_oe_de_plot <- renderPlot({
-    d <- rv$conf; req(d)
-    ggplot(d, aes(x=mean_adj_oe, y=mean_adj_de, label=conf, color=mean_barthag)) +
-      geom_point(size=3.5) +
-      geom_text(nudge_y=0.1, size=3.2) +
-      scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="Avg\nBarthag") +
-      scale_y_reverse() +
-      geom_hline(yintercept=mean(d$mean_adj_de, na.rm=TRUE), linetype="dashed", color="grey60") +
-      geom_vline(xintercept=mean(d$mean_adj_oe, na.rm=TRUE), linetype="dashed", color="grey60") +
-      labs(title="Offense vs. Defense by Conference",
-           x="Avg. Adj. OE", y="Avg. Adj. DE (lower = better)") +
-      theme_minimal(base_size=11)
-  })
+  if (have_plotly) {
+    output$conf_oe_de_plot <- plotly::renderPlotly({
+      d <- rv$conf; req(d)
+      pdat <- data.frame(
+        mean_adj_oe=d$mean_adj_oe, mean_adj_de=d$mean_adj_de, mean_barthag=d$mean_barthag,
+        conf=clean_utf8(d$conf),
+        tip=hov("<b>", clean_utf8(d$conf), "</b><br>Avg Adj OE: ", round(d$mean_adj_oe,1),
+                "<br>Avg Adj DE: ", round(d$mean_adj_de,1),
+                "<br>Avg Barthag: ", round(d$mean_barthag*100,1), "%",
+                "<br>Top team: ", clean_utf8(d$top_team)),
+        stringsAsFactors=FALSE
+      )
+      plotly::plot_ly(pdat, x=~mean_adj_oe, y=~mean_adj_de, type="scatter", mode="markers+text",
+                      text=~conf, textposition="top center", textfont=list(size=10),
+                      marker=list(size=12, color=~mean_barthag,
+                                  colorscale=list(c(0,"#aed6f1"),c(1,"#1a3a5c")),
+                                  showscale=TRUE, colorbar=list(title="Barthag")),
+                      hovertext=~tip, hoverinfo="text") |>
+        plotly::layout(xaxis=list(title="Avg. Adj. OE"),
+                       yaxis=list(title="Avg. Adj. DE (lower = better)", autorange="reversed"),
+                       margin=list(l=55,r=10,t=20,b=45)) |>
+        plotly::config(displaylogo=FALSE, modeBarButtonsToRemove=c("select2d","lasso2d"))
+    })
+  } else {
+    output$conf_oe_de_plot <- renderPlot({
+      d <- rv$conf; req(d)
+      ggplot(d, aes(x=mean_adj_oe, y=mean_adj_de, label=conf, color=mean_barthag)) +
+        geom_point(size=3.5) + geom_text(nudge_y=0.1, size=3.2) +
+        scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="Avg\nBarthag") +
+        scale_y_reverse() +
+        labs(x="Avg. Adj. OE", y="Avg. Adj. DE (lower = better)") +
+        theme_minimal(base_size=11)
+    })
+  }
 
   output$conf_tempo_plot <- renderPlot({
     d <- rv$conf; req(d)
@@ -673,31 +739,53 @@ server <- function(input, output, session) {
     d
   })
 
-  output$ff_scatter <- renderPlot({
-    d  <- ff_display()
-    xv <- input$ff_x; yv <- input$ff_y
-    lbl_map <- c(
-      o_efg="eFG% Off", o_to_pct="TO% Off", o_reb_pct="OReb%", o_ftr="FT Rate Off",
-      d_efg="eFG% Def", d_to_pct="TO% Def", d_reb_pct="DReb%", d_ftr="FT Rate Def"
-    )
-    if (!xv %in% names(d) || !yv %in% names(d)) {
-      return(ggplot() + annotate("text",x=.5,y=.5,label="Column not available",size=5) + theme_void())
-    }
-    p <- ggplot(d, aes(x=.data[[xv]], y=.data[[yv]], color=.data[["barthag"]])) +
-      geom_point(size=2.8, alpha=0.82) +
-      scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="Barthag") +
-      geom_hline(yintercept=mean(d[[yv]], na.rm=TRUE), linetype="dashed", color="grey50") +
-      geom_vline(xintercept=mean(d[[xv]], na.rm=TRUE), linetype="dashed", color="grey50") +
-      labs(title=paste(lbl_map[xv], "vs.", lbl_map[yv]),
-           x=paste0(lbl_map[xv]," (%)"), y=paste0(lbl_map[yv]," (%)")) +
-      theme_minimal(base_size=12)
-    if (input$ff_label) {
-      fn <- if (have_ggrepel) function(p) p + ggrepel::geom_text_repel(aes(label=.data[["team"]]), size=2.5, max.overlaps=20)
-            else              function(p) p + geom_text(aes(label=.data[["team"]]), size=2.2, vjust=-0.6, check_overlap=TRUE)
-      p <- fn(p)
-    }
-    p
-  })
+  ff_lbl_map <- c(
+    o_efg="eFG% Off", o_to_pct="TO% Off", o_reb_pct="OReb%", o_ftr="FT Rate Off",
+    d_efg="eFG% Def", d_to_pct="TO% Def", d_reb_pct="DReb%", d_ftr="FT Rate Def"
+  )
+
+  if (have_plotly) {
+    output$ff_scatter <- plotly::renderPlotly({
+      d <- ff_display(); xv <- input$ff_x; yv <- input$ff_y
+      validate(need(xv %in% names(d) && yv %in% names(d), "Selected columns not available for this season."))
+      mx <- mean(d[[xv]],na.rm=TRUE); my <- mean(d[[yv]],na.rm=TRUE)
+      pdat <- data.frame(
+        x=d[[xv]], y=d[[yv]], barthag=d$barthag,
+        tip=hov("<b>", clean_utf8(d$team), "</b> (", clean_utf8(d$conf), ")<br>",
+                ff_lbl_map[xv], ": ", d[[xv]], "%<br>",
+                ff_lbl_map[yv], ": ", d[[yv]], "%<br>",
+                "Barthag: ", round(d$barthag*100,1), "%"),
+        stringsAsFactors=FALSE
+      )
+      plotly::plot_ly(
+        pdat, x=~x, y=~y, type="scatter", mode="markers",
+        marker=list(size=9, color=~barthag, colorscale=list(c(0,"#aed6f1"),c(1,"#1a3a5c")),
+                    line=list(width=0.5,color="white"), showscale=TRUE, colorbar=list(title="Barthag")),
+        text=~tip, hoverinfo="text"
+      ) |>
+        plotly::layout(
+          xaxis=list(title=paste0(ff_lbl_map[xv]," (%)")),
+          yaxis=list(title=paste0(ff_lbl_map[yv]," (%)")),
+          shapes=list(
+            list(type="line", x0=mx, x1=mx, yref="paper", y0=0, y1=1,
+                 line=list(dash="dash",color="grey",width=1)),
+            list(type="line", y0=my, y1=my, xref="paper", x0=0, x1=1,
+                 line=list(dash="dash",color="grey",width=1))),
+          margin=list(l=60,r=20,t=20,b=50)
+        ) |>
+        plotly::config(displaylogo=FALSE, modeBarButtonsToRemove=c("select2d","lasso2d"))
+    })
+  } else {
+    output$ff_scatter <- renderPlot({
+      d  <- ff_display(); xv <- input$ff_x; yv <- input$ff_y
+      validate(need(xv %in% names(d) && yv %in% names(d), "Column not available"))
+      ggplot(d, aes(x=.data[[xv]], y=.data[[yv]], color=.data[["barthag"]])) +
+        geom_point(size=2.8, alpha=0.82) +
+        scale_color_gradient(low="#aed6f1", high="#1a3a5c", name="Barthag") +
+        labs(x=paste0(ff_lbl_map[xv]," (%)"), y=paste0(ff_lbl_map[yv]," (%)")) +
+        theme_minimal(base_size=12)
+    })
+  }
 
   output$ff_table <- renderDT({
     d <- ff_display()
@@ -900,10 +988,9 @@ server <- function(input, output, session) {
         torvik_shooting(year=yr, conf="All") |> filter(team == input$tp_team),
         error=function(e) NULL
       )
-      rv$tp_ff <- tryCatch(
-        torvik_four_factors(year=yr, conf="All") |> filter(team == input$tp_team),
-        error=function(e) NULL
-      )
+      ff_all <- tryCatch(torvik_four_factors(year=yr, conf="All"), error=function(e) NULL)
+      rv$tp_ff_all <- ff_all
+      rv$tp_ff <- if (!is.null(ff_all)) dplyr::filter(ff_all, .data$team == input$tp_team) else NULL
     })
   }, ignoreNULL=TRUE, ignoreInit=TRUE)
 
@@ -925,26 +1012,66 @@ server <- function(input, output, session) {
   output$tp_card_oe      <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(fmt_num(d$adj_oe[1],1),"Adj. OE","#2980b9") })
   output$tp_card_de      <- renderUI({ d <- rv$tp_data; req(d,nrow(d)>0); stat_card(fmt_num(d$adj_de[1],1),"Adj. DE","#8e44ad") })
 
-  output$tp_ff_plot <- renderPlot({
-    ff_raw <- rv$tp_ff
-    req(!is.null(ff_raw), nrow(ff_raw)>0)
-    factors <- tibble(
-      Factor = c("eFG% Off","eFG% Def","TO% Off","TO% Def","OReb%","DReb%","FTR Off","FTR Def"),
-      Value  = c(pct_scale(ff_raw$o_efg)[1], pct_scale(ff_raw$d_efg)[1],
-                 pct_scale(ff_raw$o_to_pct)[1], pct_scale(ff_raw$d_to_pct)[1],
-                 pct_scale(ff_raw$o_reb_pct)[1], pct_scale(ff_raw$d_reb_pct)[1],
-                 pct_scale(ff_raw$o_ftr)[1], pct_scale(ff_raw$d_ftr)[1]),
-      Side   = c("Off","Def","Off","Def","Off","Def","Off","Def")
+  # National percentile (0-100, higher = better) for the selected team across the
+  # eight four-factor metrics, with correct "lower is better" inversions.
+  tp_percentiles <- reactive({
+    all <- rv$tp_ff_all; one <- rv$tp_ff
+    req(!is.null(all), nrow(all)>0, !is.null(one), nrow(one)>0)
+    # metric, label, higher_is_better?
+    spec <- list(
+      c("o_efg","Off eFG%","TRUE"),  c("o_to_pct","Off TO%","FALSE"),
+      c("o_reb_pct","Off Reb%","TRUE"), c("o_ftr","Off FT Rate","TRUE"),
+      c("d_efg","Def eFG%","FALSE"), c("d_to_pct","Def TO% Forced","TRUE"),
+      c("d_reb_pct","Def Reb%","TRUE"), c("d_ftr","Def FT Rate","FALSE")
     )
-    ggplot(factors, aes(x=reorder(Factor, Value), y=Value, fill=Side)) +
-      geom_col(width=0.7) +
-      geom_text(aes(label=paste0(round(Value,1),"%")), hjust=-0.1, size=3.2) +
-      scale_fill_manual(values=c("Off"="#1a3a5c","Def"="#e07b24")) +
-      coord_flip(clip="off") +
-      labs(x=NULL, y="%") +
-      theme_minimal(base_size=11) +
-      theme(plot.margin=margin(r=30), legend.position="top")
+    out <- lapply(spec, function(s) {
+      col <- s[1]; lab <- s[2]; hi <- as.logical(s[3])
+      if (!col %in% names(all)) return(NULL)
+      vals <- suppressWarnings(as.numeric(all[[col]]))
+      tv   <- suppressWarnings(as.numeric(one[[col]][1]))
+      if (is.na(tv)) return(NULL)
+      pct <- mean(vals <= tv, na.rm=TRUE) * 100        # ascending percentile
+      if (!hi) pct <- 100 - pct                         # invert when lower=better
+      data.frame(metric=lab, pct=round(pct), raw=round(tv,1), stringsAsFactors=FALSE)
+    })
+    do.call(rbind, out)
   })
+
+  if (have_plotly) {
+    output$tp_ff_plot <- plotly::renderPlotly({
+      p <- tp_percentiles(); req(!is.null(p), nrow(p)>0)
+      # close the loop for the radar
+      pr <- rbind(p, p[1,])
+      plotly::plot_ly(
+        type="scatterpolar", mode="lines+markers",
+        r=pr$pct, theta=pr$metric, fill="toself",
+        fillcolor="rgba(26,58,92,0.25)", line=list(color="#1a3a5c", width=2),
+        marker=list(color="#e07b24", size=7),
+        text=paste0(pr$metric, "<br>Percentile: ", pr$pct, "<br>Value: ", pr$raw),
+        hoverinfo="text"
+      ) |>
+        plotly::layout(
+          polar=list(radialaxis=list(visible=TRUE, range=c(0,100), tickvals=c(0,25,50,75,100))),
+          showlegend=FALSE, margin=list(l=40,r=40,t=30,b=30),
+          annotations=list(list(text="100 = best in country", showarrow=FALSE,
+                                 xref="paper", yref="paper", x=0.5, y=-0.08,
+                                 font=list(size=10, color="grey")))
+        ) |>
+        plotly::config(displaylogo=FALSE, displayModeBar=FALSE)
+    })
+  } else {
+    output$tp_ff_plot <- renderPlot({
+      p <- tp_percentiles(); req(!is.null(p), nrow(p)>0)
+      p$side <- ifelse(grepl("^Off", p$metric), "Offense", "Defense")
+      ggplot(p, aes(x=reorder(metric, pct), y=pct, fill=side)) +
+        geom_col(width=0.7) +
+        geom_text(aes(label=pct), hjust=-0.2, size=3.2) +
+        scale_fill_manual(values=c("Offense"="#1a3a5c","Defense"="#e07b24"), name=NULL) +
+        coord_flip(clip="off") + ylim(0,108) +
+        labs(x=NULL, y="National percentile (100 = best)") +
+        theme_minimal(base_size=11) + theme(legend.position="top")
+    })
+  }
 
   output$tp_shot_plot <- renderPlot({
     sh <- rv$tp_shooting; req(!is.null(sh), nrow(sh)>0)
@@ -1072,19 +1199,46 @@ server <- function(input, output, session) {
       theme(legend.position="none", plot.margin=margin(r=20))
   })
 
-  output$pl_ortg_plot <- renderPlot({
-    d <- pl_filtered()
-    req(nrow(d)>0, "ORtg" %in% names(d))
-    d2 <- d |> mutate(ORtg=as.numeric(ORtg), usg=as.numeric(usg), bpm=as.numeric(bpm)) |>
-      filter(!is.na(ORtg), !is.na(usg))
-    ggplot(d2, aes(x=usg, y=ORtg, color=bpm)) +
-      geom_point(alpha=0.65, size=2) +
-      scale_color_gradient2(low="#c0392b", mid="#bdc3c7", high="#1a5276", midpoint=0,
-                            na.value="grey70", name="BPM") +
-      geom_hline(yintercept=100, linetype="dashed", color="grey60") +
-      labs(title="Usage vs. Offensive Rating", x="Usage Rate (%)", y="Offensive Rating") +
-      theme_minimal(base_size=11)
-  })
+  if (have_plotly) {
+    output$pl_ortg_plot <- plotly::renderPlotly({
+      d <- pl_filtered(); req(nrow(d)>0, "ORtg" %in% names(d))
+      d2 <- d |> mutate(ORtg=as.numeric(ORtg), usg=as.numeric(usg),
+                        gbpm=as.numeric(gbpm), pts=as.numeric(pts)) |>
+        filter(!is.na(ORtg), !is.na(usg))
+      # Pass only clean numeric columns + a sanitized tooltip so plotly's JSON
+      # serializer never sees the raw (possibly invalid-UTF8) name columns.
+      pdat <- data.frame(
+        usg  = d2$usg, ORtg = d2$ORtg, gbpm = d2$gbpm,
+        tip  = hov("<b>", clean_utf8(d2$player_name), "</b> (", clean_utf8(d2$team), ")<br>",
+                   "Usage: ", round(d2$usg,1), "%  ·  ORtg: ", round(d2$ORtg,0), "<br>",
+                   "BPM 2.0: ", round(d2$gbpm,1), "  ·  PTS: ", d2$pts),
+        stringsAsFactors = FALSE
+      )
+      plotly::plot_ly(pdat, x=~usg, y=~ORtg, type="scatter", mode="markers",
+                      marker=list(size=8, color=~gbpm, colorscale="RdBu", cmid=0,
+                                  line=list(width=0.4,color="white"),
+                                  showscale=TRUE, colorbar=list(title="BPM 2.0")),
+                      text=~tip, hoverinfo="text") |>
+        plotly::layout(xaxis=list(title="Usage Rate (%)"),
+                       yaxis=list(title="Offensive Rating"),
+                       shapes=list(list(type="line", y0=100, y1=100, xref="paper", x0=0, x1=1,
+                                        line=list(dash="dash", color="grey", width=1))),
+                       margin=list(l=55,r=10,t=20,b=45)) |>
+        plotly::config(displaylogo=FALSE, modeBarButtonsToRemove=c("select2d","lasso2d"))
+    })
+  } else {
+    output$pl_ortg_plot <- renderPlot({
+      d <- pl_filtered(); req(nrow(d)>0, "ORtg" %in% names(d))
+      d2 <- d |> mutate(ORtg=as.numeric(ORtg), usg=as.numeric(usg), gbpm=as.numeric(gbpm)) |>
+        filter(!is.na(ORtg), !is.na(usg))
+      ggplot(d2, aes(x=usg, y=ORtg, color=gbpm)) +
+        geom_point(alpha=0.65, size=2) +
+        scale_color_gradient2(low="#c0392b", mid="#bdc3c7", high="#1a5276", midpoint=0,
+                              na.value="grey70", name="BPM 2.0") +
+        geom_hline(yintercept=100, linetype="dashed", color="grey60") +
+        labs(x="Usage Rate (%)", y="Offensive Rating") + theme_minimal(base_size=11)
+    })
+  }
 
   output$pl_table <- renderDT({
     d <- pl_filtered(); req(nrow(d)>0)
